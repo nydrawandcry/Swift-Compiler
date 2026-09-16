@@ -10,7 +10,9 @@
 %x STRING
 %x COMMENT
 
-    /* todo именованные шаблоны */
+    /* -~-~-~-~-~-~-~-~-~ NAMED GROUPS -~-~-~-~-~-~-~-~-~ */
+
+    CUSTOM_OPERATOR [\/=\-+!*%<>&|^~?.]+
 
 %%
 
@@ -230,6 +232,10 @@ _                   { printf("KEYWORD: used in patterns _\n"); }
             /* ternary */
 
 "?"    { printf("OPERATOR: ?\n"); }
+
+            /* custom */
+
+{CUSTOM_OPERATOR}   { printf("CUSTOM_OPERATOR: %s\n", yytext); }
 
         /* PUNCTUATION */
 
