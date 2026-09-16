@@ -154,6 +154,10 @@ _                   { printf("KEYWORD: used in patterns _\n"); }
 
         /* IDENTIFIERS */
 
+[A-Za-z_][A-Za-z_0-9] * { /* todo пока вот так по-простому */
+    printf("IDENTIFIER: %s\n", yytext);
+}
+
         /* NUMERIC LITERALS */
 
         /* STRINGS */
