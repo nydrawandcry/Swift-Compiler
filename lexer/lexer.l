@@ -160,6 +160,77 @@ _                   { printf("KEYWORD: used in patterns _\n"); }
 
         /* OPERATORS */
 
+            /* identity */
+
+"==="  { printf("OPERATOR: ===\n"); }
+"!=="  { printf("OPERATOR: !==\n"); }
+
+            /* range operators */
+
+"..."  { printf("OPERATOR: ...\n"); }
+"..<"  { printf("OPERATOR: ..<\n"); }
+
+            /* compound assignment */
+
+"+="   { printf("OPERATOR: +=\n"); }
+"-="   { printf("OPERATOR: -=\n"); }
+"*="   { printf("OPERATOR: *=\n"); }
+"/="   { printf("OPERATOR: /=\n"); }
+"%="   { printf("OPERATOR: %%=\n"); }
+
+            /* overflow */
+
+"&+"   { printf("OPERATOR: &+\n"); }
+"&-"   { printf("OPERATOR: &-\n"); }
+"&*"   { printf("OPERATOR: &*\n"); }
+
+            /* comparison */
+
+">="   { printf("OPERATOR: >=\n"); }
+"<="   { printf("OPERATOR: <=\n"); }
+"=="   { printf("OPERATOR: ==\n"); }
+"!="   { printf("OPERATOR: !=\n"); }
+">"    { printf("OPERATOR: >\n"); }
+"<"    { printf("OPERATOR: <\n"); }
+
+            /* nil coalescing */
+
+"??"   { printf("OPERATOR: ??\n"); }
+
+            /* logical */
+
+"&&"   { printf("OPERATOR: &&\n"); }
+"||"   { printf("OPERATOR: ||\n"); }
+"!"    { printf("OPERATOR: !\n"); }
+
+            /* member and function */
+
+"->"   { printf("OPERATOR: ->\n"); }
+"."    { printf("OPERATOR: .\n"); }
+":"    { printf("OPERATOR: :\n"); }
+
+            /* bitwise */
+
+">>"   { printf("OPERATOR: >>\n"); }
+"<<"   { printf("OPERATOR: <<\n"); }
+"~"    { printf("OPERATOR: ~\n"); }
+"&"    { printf("OPERATOR: &\n"); }
+"|"    { printf("OPERATOR: |\n"); }
+"^"    { printf("OPERATOR: ^\n"); }
+
+            /* assignment and arithmetic */
+
+"="    { printf("OPERATOR: =\n"); }
+"+"    { printf("OPERATOR: +\n"); }
+"-"    { printf("OPERATOR: -\n"); }
+"*"    { printf("OPERATOR: *\n"); }
+"/"    { printf("OPERATOR: /\n"); }
+"%"    { printf("OPERATOR: %%\n"); }
+
+            /* ternary */
+
+"?"    { printf("OPERATOR: ?\n"); }
+
         /* PUNCTUATION */
 
         /* WHITESPACES */
