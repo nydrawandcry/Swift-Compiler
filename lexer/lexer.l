@@ -239,6 +239,28 @@ _                   { printf("KEYWORD: used in patterns _\n"); }
 
         /* PUNCTUATION */
 
+","   { printf("PUNCTUATION: ,\n"); }
+
+"("   { printf("PUNCTUATION: (\n"); }
+")"   { printf("PUNCTUATION: )\n"); }
+
+"{"   { printf("PUNCTUATION: {\n"); }
+"}"   { printf("PUNCTUATION: }\n"); }
+
+"["   { printf("PUNCTUATION: [\n"); }
+"]"   { printf("PUNCTUATION: ]\n"); }
+
+";"   { printf("PUNCTUATION: ;\n"); }
+
+","   { printf("PUNCTUATION: ,\n"); }
+"."   { printf("PUNCTUATION: .\n"); }
+":"   { printf("PUNCTUATION: :\n"); }
+
+"@"   { printf("PUNCTUATION: @\n"); }
+"#"   { printf("PUNCTUATION: #\n"); }
+
+"`"   { printf("PUNCTUATION: `\n"); }
+
         /* WHITESPACES */
 
 [ \t\r]+     ;
