@@ -203,6 +203,37 @@ _                   { printf("KEYWORD: used in patterns _\n"); }
 
         /* COMMENTS */
 
+"//"[^\n]* {
+    /* однострочный комментарий игнорируется */
+}
+
+%x COMMENT
+%%
+% {int stringCounter = 0; %}
+"/*" {
+    stringCounter = 1;
+    BEGIN(COMMENT);
+}
+<COMMENT> "/*" {
+    stringCounter++;
+}
+<COMMENT> "*/" {
+    stringCounter--;
+}
+<COMMENT> "\n" {
+    /* yylineno автоматически увеличивается и считает строки */
+}
+<COMMENT> . {
+    /* игнорирование символов в комментарии */
+}
+<COMMENT> <<EOF>> {
+    fprintf(stderr,
+        "Lexer error at line %d: unfinished multiline comment\n",
+        yylineno
+    );
+    BEGIN(INITIAL);
+}
+
         /* OPERATORS */
 
             /* identity */
