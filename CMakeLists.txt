@@ -21,4 +21,6 @@ add_executable(
         Swift_Compiler
         src/main.cpp
         ${FLEX_Lexer_OUTPUTS}
+        utils/Buffer/Buffer.cpp
+        utils/Buffer/Buffer.h
 )
