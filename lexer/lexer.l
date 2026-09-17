@@ -391,8 +391,6 @@ _                   { printf("KEYWORD: used in patterns _\n"); }
 "]"   { printf("PUNCTUATION: ]\n"); }
 
 ";"   { printf("PUNCTUATION: ;\n"); }
-
-","   { printf("PUNCTUATION: ,\n"); }
 "."   { printf("PUNCTUATION: .\n"); }
 ":"   { printf("PUNCTUATION: :\n"); }
 
