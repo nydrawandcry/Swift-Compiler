@@ -13,6 +13,7 @@ int commentDepth = 0;
 
 %x STRING
 %x COMMENT
+%x RAW_STRING
 
     /* -~-~-~-~-~-~-~-~-~ NAMED GROUPS -~-~-~-~-~-~-~-~-~ */
 
@@ -237,6 +238,30 @@ _                   { printf("KEYWORD: used in patterns _\n"); }
 <STRING><<EOF>> {
     fprintf(stderr,
             "Lexer error at line %d: unterminated string literal\n",
+            buffer.getStartLine());
+
+    BEGIN(INITIAL);
+}
+
+        /* RAW STRINGS */
+
+"#"\" {
+    buffer.reset(yylineno);
+    BEGIN(RAW_STRING);
+}
+
+<RAW_STRING>[^"]+ {
+    buffer.append(yytext);
+}
+
+<RAW_STRING>\"# {
+    printf("RAW_STRING: %s\n", buffer.get().c_str());
+    BEGIN(INITIAL);
+}
+
+<RAW_STRING><<EOF>> {
+    fprintf(stderr,
+            "Lexer error at line %d: unterminated raw string literal\n",
             buffer.getStartLine());
 
     BEGIN(INITIAL);
