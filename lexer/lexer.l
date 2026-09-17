@@ -5,6 +5,8 @@
 %{
 #include <stdio.h>
 #include <string.h>
+
+int commentDepth = 0;
 %}
 
 %x STRING
@@ -210,26 +212,26 @@ _                   { printf("KEYWORD: used in patterns _\n"); }
     /* однострочный комментарий игнорируется */
 }
 
-%x COMMENT
-%%
-% {int stringCounter = 0; %}
 "/*" {
-    stringCounter = 1;
+    commentDepth = 1;
     BEGIN(COMMENT);
 }
-<COMMENT> "/*" {
-    stringCounter++;
+<COMMENT>"/*" {
+    commentDepth++;
 }
-<COMMENT> "*/" {
-    stringCounter--;
+<COMMENT>"*/" {
+    commentDepth--;
+    if(commentDepth == 0) {
+        BEGIN(INITIAL);
+    }
 }
-<COMMENT> "\n" {
+<COMMENT>"\n" {
     /* yylineno автоматически увеличивается и считает строки */
 }
-<COMMENT> . {
+<COMMENT>. {
     /* игнорирование символов в комментарии */
 }
-<COMMENT> <<EOF>> {
+<COMMENT><<EOF>> {
     fprintf(stderr,
         "Lexer error at line %d: unfinished multiline comment\n",
         yylineno
