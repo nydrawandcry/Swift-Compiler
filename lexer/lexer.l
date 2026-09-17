@@ -170,6 +170,30 @@ _                   { printf("KEYWORD: used in patterns _\n"); }
 
         /* NUMERIC LITERALS */
 
+{INT_BINARY} {
+    printf("INTEGER_LITERAL (binary): %s\n", yytext); /*todo число всегда превращается в число...?*/
+}
+
+{INT_DECIMAL} {
+    printf("INTEGER_LITERAL (decimal): %s\n", yytext);
+}
+
+{INT_OCTAL} {
+    printf("INTEGER_LITERAL (octal): %s\n", yytext);
+}
+
+{INT_HEXADECIMAL} {
+    printf("INTEGER_LITERAL (hexadecimal): %s\n", yytext);
+}
+
+{FLOAT_DECIMAL} {
+    printf("INTEGER_LITERAL (decimal): %s\n", yytext); /* todo нужно float переделать */
+}
+
+{FLOAT_HEXADECIMAL} {
+    printf("INTEGER_LITERAL (hexadecimal): %s\n", yytext); /* todo нужно float переделать */
+}
+
         /* STRINGS */
 
         /* COMMENTS */
