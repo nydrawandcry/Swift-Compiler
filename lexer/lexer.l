@@ -19,6 +19,7 @@
     DECIMAL_DIGITS    [0-9][0-9_]*                  /* подшаблон для целых чисел */
     DECIMAL_EXPONENT  [eE][+-]?{DECIMAL_DIGITS}     /* подшаблон для экспоненты */
     HEX_DIGITS        [0-9a-fA-F][0-9a-fA-F_]*      /* подшаблон для шестнадцатеричных чисел */
+    HEX_EXPONENT        [pP][+-]?{DECIMAL_DIGITS}   /* подшаблон для экспоненты */
 
     INT_BINARY        0b[01][01_]*
     INT_DECIMAL       {DECIMAL_DIGITS}
@@ -168,7 +169,7 @@ _                   { printf("KEYWORD: used in patterns _\n"); }
 
         /* IDENTIFIERS */
 
-[A-Za-z_][A-Za-z_0-9] * { /* todo пока вот так по-простому */
+[A-Za-z_][A-Za-z_0-9]* { /* todo пока вот так по-простому */
     printf("IDENTIFIER: %s\n", yytext);
 }
 
