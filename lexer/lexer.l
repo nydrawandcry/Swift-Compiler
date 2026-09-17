@@ -12,22 +12,25 @@
 
     /* -~-~-~-~-~-~-~-~-~ NAMED GROUPS -~-~-~-~-~-~-~-~-~ */
 
-    CUSTOM_OPERATOR   [\/=\-+!*%<>&|^~?.]+
+CUSTOM_OPERATOR [\/=\-+!*%<>&|^~?.]+
 
         /* -~-~-~-~-~-~-~-~-~-~- DIGITS -~-~-~-~-~-~-~-~-~-~- */
+    /* подшаблон для целых чисел */
+DECIMAL_DIGITS    [0-9][0-9_]*
+    /* подшаблон для экспоненты */
+DECIMAL_EXPONENT  [eE][+-]?{DECIMAL_DIGITS}
+    /* подшаблон для шестнадцатеричных чисел */
+HEX_DIGITS        [0-9a-fA-F][0-9a-fA-F_]*
+    /* подшаблон для экспоненты */
+HEX_EXPONENT      [pP][+-]?{DECIMAL_DIGITS}
 
-    DECIMAL_DIGITS    [0-9][0-9_]*                  /* подшаблон для целых чисел */
-    DECIMAL_EXPONENT  [eE][+-]?{DECIMAL_DIGITS}     /* подшаблон для экспоненты */
-    HEX_DIGITS        [0-9a-fA-F][0-9a-fA-F_]*      /* подшаблон для шестнадцатеричных чисел */
-    HEX_EXPONENT        [pP][+-]?{DECIMAL_DIGITS}   /* подшаблон для экспоненты */
+INT_BINARY        0b[01][01_]*
+INT_DECIMAL       {DECIMAL_DIGITS}
+INT_OCTAL         0o[0-7][0-7_]*
+INT_HEXADECIMAL   0x{HEX_DIGITS}
 
-    INT_BINARY        0b[01][01_]*
-    INT_DECIMAL       {DECIMAL_DIGITS}
-    INT_OCTAL         0o[0-7][0-7_]*
-    INT_HEXADECIMAL   0x{HEX_DIGITS}
-
-    FLOAT_DECIMAL     {DECIMAL_DIGITS}\.{DECIMAL_DIGITS}({DECIMAL_EXPONENT})?|{DECIMAL_DIGITS}{DECIMAL_EXPONENT}
-    FLOAT_HEXADECIMAL 0x{HEX_DIGITS}(\.{HEX_DIGITS})?{HEX_EXPONENT}
+FLOAT_DECIMAL     {DECIMAL_DIGITS}\.{DECIMAL_DIGITS}({DECIMAL_EXPONENT})?|{DECIMAL_DIGITS}{DECIMAL_EXPONENT}
+FLOAT_HEXADECIMAL 0x{HEX_DIGITS}(\.{HEX_DIGITS})?{HEX_EXPONENT}
 
 %%
 
