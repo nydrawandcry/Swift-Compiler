@@ -16,13 +16,17 @@
 
         /* -~-~-~-~-~-~-~-~-~-~- DIGITS -~-~-~-~-~-~-~-~-~-~- */
 
-    INT_BINARY        0b[01][01_]*
-    INT_DECIMAL       [0-9][0-9_]*
-    INT_OCTAL         0o[0-7][0-7_]*
-    INT_HEXADECIMAL   0x[A-F0-9a-f][A-F0-9a-f_]*
+    DECIMAL_DIGITS    [0-9][0-9_]*                  /* подшаблон для целых чисел */
+    DECIMAL_EXPONENT  [eE][+-]?{DECIMAL_DIGITS}     /* подшаблон для экспоненты */
+    HEX_DIGITS        [0-9a-fA-F][0-9a-fA-F_]*      /* подшаблон для шестнадцатеричных чисел */
 
-    FLOAT_DECIMAL     [0-9][0-9_]*e[+-]?[0-9][0-9_]*|[-+]?[0-9][0-9_]*\.[0-9][0-9_]*(e[-+]?[0-9][0-9_]*)?
-    FLOAT_HEXADECIMAL [+-]?0x[0-9a-fA-F][0-9a-fA-F_]*\.[0-9a-fA-F][0-9a-fA-F_]*([pP][-+]?[0-9a-fA-F][0-9_]*)|[0-9a-fA-F][0-9a-fA-F_]*p[+-]?[0-9][0-9_]*
+    INT_BINARY        0b[01][01_]*
+    INT_DECIMAL       {DECIMAL_DIGITS}
+    INT_OCTAL         0o[0-7][0-7_]*
+    INT_HEXADECIMAL   0x{HEX_DIGITS}
+
+    FLOAT_DECIMAL     {DECIMAL_DIGITS}\.{DECIMAL_DIGITS}({DECIMAL_EXPONENT})?|{DECIMAL_DIGITS}{DECIMAL_EXPONENT}
+    FLOAT_HEXADECIMAL 0x{HEX_DIGITS}(\.{HEX_DIGITS})?{HEX_EXPONENT}
 
 %%
 
