@@ -5,7 +5,9 @@
 %{
 #include <stdio.h>
 #include <string.h>
+#include "../utils/Buffer/Buffer.h"
 
+Buffer buffer;
 int commentDepth = 0;
 %}
 
@@ -205,6 +207,40 @@ _                   { printf("KEYWORD: used in patterns _\n"); }
 }
 
         /* STRINGS */
+
+\" {
+    buffer.reset(yylineno);
+    BEGIN(STRING);
+}
+
+<STRING>[^\\\"\n]+  { buffer.append(yytext); }
+
+<STRING>\\n         { buffer.append("\n"); }
+<STRING>\\t         { buffer.append("\t"); }
+<STRING>\\\\        { buffer.append("\\"); }
+<STRING>\\\"        { buffer.append("\""); }
+
+<STRING>\" {
+    printf("STRING: %s\n", buffer.get().c_str());
+    BEGIN(INITIAL);
+}
+
+    /* перевод строки - строка не закрыта */
+<STRING>\n {
+    fprintf(stderr,
+            "Lexer error at line %d: unterminated string literal\n",
+            buffer.getStartLine());
+
+    BEGIN(INITIAL);
+}
+    /* конец файла внутри строки */
+<STRING><<EOF>> {
+    fprintf(stderr,
+            "Lexer error at line %d: unterminated string literal\n",
+            buffer.getStartLine());
+
+    BEGIN(INITIAL);
+}
 
         /* COMMENTS */
 
