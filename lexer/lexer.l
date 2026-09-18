@@ -187,24 +187,67 @@ _                   { printf("KEYWORD: used in patterns _\n"); }
     printf("INTEGER_LITERAL (binary): %s\n", yytext); /*todo число всегда превращается в число...?*/
 }
 
-{INT_DECIMAL} {
-    printf("INTEGER_LITERAL (decimal): %s\n", yytext);
+0b[0-9A-Za-z_]+ {
+    fprintf(stderr,
+        "Lexer error at line %d: invalid binary literal '%s'\n",
+         yylineno,
+         yytext);
+    )
 }
 
 {INT_OCTAL} {
     printf("INTEGER_LITERAL (octal): %s\n", yytext);
 }
 
+0o[0-9A-Za-z_]+ {
+    fprintf(stderr,
+        "Lexer error at line %d: invalid octal literal '%s'\n",
+        yylineno,
+        yytext);
+}
+
 {INT_HEXADECIMAL} {
     printf("INTEGER_LITERAL (hexadecimal): %s\n", yytext);
 }
 
+0x[0-9A-Za-z_]+ {
+    fprintf(stderr,
+        "Lexer error at line %d: invalid hexadecimal literal '%s'\n",
+        yylineno,
+        yytext);
+}
+
 {FLOAT_DECIMAL} {
-    printf("INTEGER_LITERAL (decimal): %s\n", yytext); /* todo нужно float переделать */
+    printf("INTEGER_LITERAL (decimal): %s\n", yytext);
+}
+
+{DECIMAL_DIGITS}\.{DECIMAL_DIGITS}[eE][+-]? {
+    fprintf(stderr,
+        "Lexer error at line %d: incomplete decimal exponent '%s'\n",
+        yylineno,
+        yytext);
+}
+
+{DECIMAL_DIGITS}[eE][+-]? {
+    fprintf(stderr,
+        "Lexer error at line %d: incomplete decimal exponent '%s'\n",
+        yylineno,
+        yytext);
 }
 
 {FLOAT_HEXADECIMAL} {
-    printf("INTEGER_LITERAL (hexadecimal): %s\n", yytext); /* todo нужно float переделать */
+    printf("INTEGER_LITERAL (hexadecimal): %s\n", yytext);
+}
+
+0x{HEX_DIGITS}(\.{HEX_DIGITS})?[pP][+-]? {
+    fprintf(stderr,
+        "Lexer error at line %d: incomplete hexadecimal exponent '%s'\n",
+        yylineno,
+        yytext);
+}
+
+{INT_DECIMAL} {
+    printf("INTEGER_LITERAL (decimal): %s\n", yytext);
 }
 
         /* STRINGS */
