@@ -209,43 +209,17 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
         /* NUMERIC LITERALS */
 
-{INT_BINARY} {
-    printf("INTEGER_LITERAL (binary): %s\n", yytext); /*todo число всегда превращается в число...?*/
-}
+            /* VALID FLOATS */
 
-0b[0-9A-Za-z_]+ { /* todo спросить, корректные ли проверки на ошибки и в правильном ли месте */
-    fprintf(stderr,
-        "Lexer error at line %d: invalid binary literal '%s'\n",
-         yylineno,
-         yytext);
-    )
-}
-
-{INT_OCTAL} {
-    printf("INTEGER_LITERAL (octal): %s\n", yytext);
-}
-
-0o[0-9A-Za-z_]+ {
-    fprintf(stderr,
-        "Lexer error at line %d: invalid octal literal '%s'\n",
-        yylineno,
-        yytext);
-}
-
-{INT_HEXADECIMAL} {
-    printf("INTEGER_LITERAL (hexadecimal): %s\n", yytext);
-}
-
-0x[0-9A-Za-z_]+ {
-    fprintf(stderr,
-        "Lexer error at line %d: invalid hexadecimal literal '%s'\n",
-        yylineno,
-        yytext);
+{FLOAT_HEXADECIMAL} {
+    printf("FLOATING_POINT_LITERAL (hexadecimal): %s\n", yytext);
 }
 
 {FLOAT_DECIMAL} {
-    printf("INTEGER_LITERAL (decimal): %s\n", yytext);
+    printf("FLOATING_POINT_LITERAL (decimal): %s\n", yytext);
 }
+
+            /* FLOAT ERRORS */
 
 {DECIMAL_DIGITS}\.{DECIMAL_DIGITS}[eE][+-]? {
     fprintf(stderr,
@@ -261,9 +235,6 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
         yytext);
 }
 
-{FLOAT_HEXADECIMAL} {
-    printf("INTEGER_LITERAL (hexadecimal): %s\n", yytext);
-}
 
 0x{HEX_DIGITS}(\.{HEX_DIGITS})?[pP][+-]? {
     fprintf(stderr,
@@ -272,8 +243,78 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
         yytext);
 }
 
+            /* VALID INTEGERS */
+
+{INT_BINARY} {
+    printf("INTEGER_LITERAL (binary): %s\n", yytext); /*todo число всегда превращается в число...?*/
+}
+
+{INT_OCTAL} {
+    printf("INTEGER_LITERAL (octal): %s\n", yytext);
+}
+
 {INT_DECIMAL} {
     printf("INTEGER_LITERAL (decimal): %s\n", yytext);
+}
+
+{INT_HEXADECIMAL} {
+    printf("INTEGER_LITERAL (hexadecimal): %s\n", yytext);
+}
+
+            /* UPPERCASE PREFIX ERRORS */
+
+0B[0-9A-Za-z_]* {
+    fprintf(stderr,
+        "Lexer error at line %d: invalid binary prefix in '%s'; use '0b'\n",
+        yylineno,
+        yytext);
+}
+
+0O[0-9A-Za-z_]* {
+    fprintf(stderr,
+        "Lexer error at line %d: invalid octal prefix in '%s'; use '0o'\n",
+        yylineno,
+        yytext);
+}
+
+0X[0-9A-Za-z_]* {
+    fprintf(stderr,
+        "Lexer error at line %d: invalid hexadecimal prefix in '%s'; use '0x'\n",
+        yylineno,
+        yytext);
+}
+
+             /* INVALID BASED INTEGERS */
+
+0b[0-9A-Za-z_]* { /* todo спросить, корректные ли проверки на ошибки и в правильном ли месте */
+    fprintf(stderr,
+        "Lexer error at line %d: invalid binary literal '%s'\n",
+         yylineno,
+         yytext;
+    )
+}
+
+0o[0-9A-Za-z_]* {
+    fprintf(stderr,
+        "Lexer error at line %d: invalid octal literal '%s'\n",
+        yylineno,
+        yytext);
+}
+
+0x[0-9A-Za-z_]* {
+    fprintf(stderr,
+        "Lexer error at line %d: invalid hexadecimal literal '%s'\n",
+        yylineno,
+        yytext);
+}
+
+            /* NUMBER FOLLOWED BY IDENTIFIER */
+
+{DECIMAL_DIGITS}[A-Za-z_][A-Za-z_0-9]* {
+    fprintf(stderr,
+        "Lexer error at line %d: invalid decimal literal '%s'\n",
+        yylineno,
+        yytext);
 }
 
         /* STRINGS */
