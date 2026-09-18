@@ -182,6 +182,25 @@ _                   { printf("KEYWORD: used in patterns _\n"); }
 "weak"               { printf("CONTEXTUAL_KEYWORD: weak\n"); }
 "willSet"            { printf("CONTEXTUAL_KEYWORD: willSet\n"); }
 
+        /* TYPES */
+
+Int                  { printf("TYPE (Int): %s\n", yytext); }
+Int8                 { printf("TYPE (Int8): %s\n", yytext); }
+Int16                { printf("TYPE (Int16): %s\n", yytext); }
+Int32                { printf("TYPE (Int32): %s\n", yytext); }
+Int64                { printf("TYPE (Int64): %s\n", yytext); }
+UInt                 { printf("TYPE (UInt): %s\n", yytext); }
+UInt8                { printf("TYPE (UInt8): %s\n", yytext); }
+UInt16               { printf("TYPE (UInt16): %s\n", yytext); }
+UInt32               { printf("TYPE (UInt32): %s\n", yytext); }
+UInt64               { printf("TYPE (UInt64): %s\n", yytext); }
+Float                { printf("TYPE (Float): %s\n", yytext); }
+Float80              { printf("TYPE (Float80): %s\n", yytext); }
+Double               { printf("TYPE (Double): %s\n", yytext); }
+Bool                 { printf("TYPE (Bool): %s\n", yytext); }
+String               { printf("TYPE (String): %s\n", yytext); }
+Character            { printf("TYPE (Character): %s\n", yytext); }
+
         /* IDENTIFIERS */
 
 [A-Za-z_][A-Za-z_0-9]* { /* todo пока вот так по-простому */
