@@ -290,8 +290,8 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     fprintf(stderr,
         "Lexer error at line %d: invalid binary literal '%s'\n",
          yylineno,
-         yytext;
-    )
+         yytext
+    );
 }
 
 0o[0-9A-Za-z_]* {
