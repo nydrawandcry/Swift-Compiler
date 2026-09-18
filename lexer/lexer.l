@@ -17,10 +17,17 @@ int commentDepth = 0;
 
     /* -~-~-~-~-~-~-~-~-~ NAMED GROUPS -~-~-~-~-~-~-~-~-~ */
 
+    /* todo
+        The following tokens are reserved
+        as punctuation and can’t be used as custom operators:
+        (, ), {, }, [, ], ., ,, :, ;, =, @, #, & (as a prefix operator),
+         ->, `, ?, and ! (as a postfix operator).
+     */
+
 CUSTOM_OPERATOR [\/=\-+!*%<>&|^~?.]+
 
         /* -~-~-~-~-~-~-~-~-~-~- DIGITS -~-~-~-~-~-~-~-~-~-~- */
-    /* подшаблон для целых чисел */
+    /* подшаблон для целых чисел (todo ????????) */
 DECIMAL_DIGITS    [0-9][0-9_]*
     /* подшаблон для экспоненты */
 DECIMAL_EXPONENT  [eE][+-]?{DECIMAL_DIGITS}
@@ -187,7 +194,7 @@ _                   { printf("KEYWORD: used in patterns _\n"); }
     printf("INTEGER_LITERAL (binary): %s\n", yytext); /*todo число всегда превращается в число...?*/
 }
 
-0b[0-9A-Za-z_]+ {
+0b[0-9A-Za-z_]+ { /* todo спросить, корректные ли проверки на ошибки и в правильном ли месте */
     fprintf(stderr,
         "Lexer error at line %d: invalid binary literal '%s'\n",
          yylineno,
@@ -388,7 +395,7 @@ _                   { printf("KEYWORD: used in patterns _\n"); }
 "||"   { printf("OPERATOR: ||\n"); }
 "!"    { printf("OPERATOR: !\n"); }
 
-            /* member and function */
+            /* member and function todo у нас тут дубликаты .:*/
 
 "->"   { printf("OPERATOR: ->\n"); }
 "."    { printf("OPERATOR: .\n"); }
