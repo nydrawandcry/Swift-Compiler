@@ -17,14 +17,17 @@ int commentDepth = 0;
 
     /* -~-~-~-~-~-~-~-~-~ NAMED GROUPS -~-~-~-~-~-~-~-~-~ */
 
-    /* todo
-        The following tokens are reserved
-        as punctuation and can’t be used as custom operators:
-        (, ), {, }, [, ], ., ,, :, ;, =, @, #, & (as a prefix operator),
-         ->, `, ?, and ! (as a postfix operator).
-     */
+        /* -~-~-~-~-~-~-~-~-~-~- OPERATORS -~-~-~-~-~-~-~-~-~-~- */
 
-CUSTOM_OPERATOR [\/=\-+!*%<>&|^~?.]+
+            /*
+             Custom operators can begin with one of the ASCII characters /, =, -, +, !, *, %, <, >, &, |, ^, ?, or ~,
+             or one of the Unicode characters defined in the grammar below (which include characters from the
+             Mathematical Operators, Miscellaneous Symbols, and Dingbats Unicode blocks, among others).
+             After the first character, combining Unicode characters are also allowed (надо не надо?? щас реализация без юникода)
+            */
+
+OPERATOR                 [\/=\-+!\*%<>&|^\~?]+
+DOT_OPERATOR             \.[.\/=\-+!\*%<>&|^\~?]+
 
         /* -~-~-~-~-~-~-~-~-~-~- DIGITS -~-~-~-~-~-~-~-~-~-~- */
     /* подшаблон для целых чисел (todo ????????) */
@@ -412,80 +415,10 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
         /* OPERATORS */
 
-            /* identity */
+{DOT_OPERATOR}  { printf("OPERATOR: %s\n", yytext); }
+{OPERATOR}  { printf("OPERATOR: %s\n", yytext); }
 
-"==="  { printf("OPERATOR: ===\n"); }
-"!=="  { printf("OPERATOR: !==\n"); }
-
-            /* range operators */
-
-"..."  { printf("OPERATOR: ...\n"); }
-"..<"  { printf("OPERATOR: ..<\n"); }
-
-            /* compound assignment */
-
-"+="   { printf("OPERATOR: +=\n"); }
-"-="   { printf("OPERATOR: -=\n"); }
-"*="   { printf("OPERATOR: *=\n"); }
-"/="   { printf("OPERATOR: /=\n"); }
-"%="   { printf("OPERATOR: %%=\n"); }
-
-            /* overflow */
-
-"&+"   { printf("OPERATOR: &+\n"); }
-"&-"   { printf("OPERATOR: &-\n"); }
-"&*"   { printf("OPERATOR: &*\n"); }
-
-            /* comparison */
-
-">="   { printf("OPERATOR: >=\n"); }
-"<="   { printf("OPERATOR: <=\n"); }
-"=="   { printf("OPERATOR: ==\n"); }
-"!="   { printf("OPERATOR: !=\n"); }
-">"    { printf("OPERATOR: >\n"); }
-"<"    { printf("OPERATOR: <\n"); }
-
-            /* nil coalescing */
-
-"??"   { printf("OPERATOR: ??\n"); }
-
-            /* logical */
-
-"&&"   { printf("OPERATOR: &&\n"); }
-"||"   { printf("OPERATOR: ||\n"); }
-"!"    { printf("OPERATOR: !\n"); }
-
-            /* member and function */
-
-"->"   { printf("OPERATOR: ->\n"); }
-
-            /* bitwise */
-
-">>"   { printf("OPERATOR: >>\n"); }
-"<<"   { printf("OPERATOR: <<\n"); }
-"~"    { printf("OPERATOR: ~\n"); }
-"&"    { printf("OPERATOR: &\n"); }
-"|"    { printf("OPERATOR: |\n"); }
-"^"    { printf("OPERATOR: ^\n"); }
-
-            /* assignment and arithmetic */
-
-"="    { printf("OPERATOR: =\n"); }
-"+"    { printf("OPERATOR: +\n"); }
-"-"    { printf("OPERATOR: -\n"); }
-"*"    { printf("OPERATOR: *\n"); }
-"/"    { printf("OPERATOR: /\n"); }
-"%"    { printf("OPERATOR: %%\n"); }
-
-            /* ternary */
-
-"?"    { printf("OPERATOR: ?\n"); }
-
-            /* custom */
-
-{CUSTOM_OPERATOR}   { printf("CUSTOM_OPERATOR: %s\n", yytext); }
-
-            /* member and function operators / punctuation */
+            /* operators / punctuation */
             /* пересекающиеся группы */
 
 "."    { printf("DOT: .\n"); }
