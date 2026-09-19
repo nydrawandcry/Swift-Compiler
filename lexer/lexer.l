@@ -455,11 +455,9 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 "||"   { printf("OPERATOR: ||\n"); }
 "!"    { printf("OPERATOR: !\n"); }
 
-            /* member and function todo у нас тут дубликаты .:*/
+            /* member and function */
 
 "->"   { printf("OPERATOR: ->\n"); }
-"."    { printf("OPERATOR: .\n"); }
-":"    { printf("OPERATOR: :\n"); }
 
             /* bitwise */
 
@@ -487,6 +485,12 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
 {CUSTOM_OPERATOR}   { printf("CUSTOM_OPERATOR: %s\n", yytext); }
 
+            /* member and function operators / punctuation */
+            /* пересекающиеся группы */
+
+"."    { printf("DOT: .\n"); }
+":"    { printf("COLON: :\n"); }
+
         /* PUNCTUATION */
 
 ","   { printf("PUNCTUATION: ,\n"); }
@@ -501,8 +505,6 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 "]"   { printf("PUNCTUATION: ]\n"); }
 
 ";"   { printf("PUNCTUATION: ;\n"); }
-"."   { printf("PUNCTUATION: .\n"); }
-":"   { printf("PUNCTUATION: :\n"); }
 
 "@"   { printf("PUNCTUATION: @\n"); }
 "#"   { printf("PUNCTUATION: #\n"); }
