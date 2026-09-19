@@ -413,6 +413,15 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     BEGIN(INITIAL);
 }
 
+    /* последовательность которая могла бы считаться оператором,
+    но является зарезервированной под конец комментария. выдаем ошибку */
+"*/" {
+    fprintf(stderr,
+        "Lexer error at line %d: unexpected end of block comment\n",
+        yylineno
+    );
+}
+
         /* OPERATORS */
 
 {DOT_OPERATOR}  { printf("OPERATOR: %s\n", yytext); }
