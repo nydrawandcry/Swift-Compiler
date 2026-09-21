@@ -14,6 +14,7 @@ int commentDepth = 0;
 %x STRING
 %x COMMENT
 %x RAW_STRING
+%x AFTER_OPERATOR
 
     /* -~-~-~-~-~-~-~-~-~ NAMED GROUPS -~-~-~-~-~-~-~-~-~ */
 
@@ -424,8 +425,15 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
         /* OPERATORS */
 
-{DOT_OPERATOR}  { printf("OPERATOR: %s\n", yytext); }
-{OPERATOR}  { printf("OPERATOR: %s\n", yytext); }
+{DOT_OPERATOR}  {
+    printf("OPERATOR: %s\n", yytext);
+    BEGIN(AFTER_OPERATOR);
+}
+
+{OPERATOR}  {
+    printf("OPERATOR: %s\n", yytext);
+    BEGIN(AFTER_OPERATOR);
+}
 
             /* operators / punctuation */
             /* пересекающиеся группы */
@@ -454,6 +462,20 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 "`"   { printf("PUNCTUATION: `\n"); }
 
         /* WHITESPACES */
+
+[ \t\r]+/{OPERATOR} { printf("WHITESPACE\n"); }
+
+<AFTER_OPERATOR>[ \t\r]+ {
+    /* найден whitespace после оператора */
+    BEGIN(INITIAL);
+    printf("WHITESPACE\n");
+}
+
+<AFTER_OPERATOR>. {
+    /* нет whitespace после оператора */
+    BEGIN(INITIAL);
+    yyless(0);
+}
 
 [ \t\r]+     ;
 \n           ;
