@@ -463,9 +463,9 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
         /* WHITESPACES */
 
-[ \t\r]+/{OPERATOR} { printf("WHITESPACE\n"); }
+[ \t\r\n]+/({OPERATOR}|{DOT_OPERATOR}) { printf("WHITESPACE\n"); }
 
-<AFTER_OPERATOR>[ \t\r]+ {
+<AFTER_OPERATOR>[ \t\r\n]+ {
     /* найден whitespace после оператора */
     BEGIN(INITIAL);
     printf("WHITESPACE\n");
