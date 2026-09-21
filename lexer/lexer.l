@@ -438,6 +438,15 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
             /* operators / punctuation */
             /* пересекающиеся группы */
 
+    /* ошибка на `. `
+       ` .` - разрешено */
+"."[ \t\r\n] {
+    fprintf(stderr,
+        "Lexer error at line %d: extraneous whitespace after '.' is not permitted\n",
+        yylineno
+    );
+}
+
 "."    { printf("DOT: .\n"); }
 ":"    { printf("COLON: :\n"); }
 
