@@ -9,6 +9,8 @@
 
 Buffer buffer;
 int commentDepth = 0;
+    // флаг, чтобы не возвращать строку если в ней есть ошибки
+bool stringInvalid = false;
 %}
 
 %x STRING
@@ -325,18 +327,34 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
 \" {
     buffer.reset(yylineno);
+    stringInvalid = false;
     BEGIN(STRING);
 }
-
-<STRING>[^\\\"\n]+  { buffer.append(yytext); }
 
 <STRING>\\n         { buffer.append("\n"); }
 <STRING>\\t         { buffer.append("\t"); }
 <STRING>\\\\        { buffer.append("\\"); }
 <STRING>\\\"        { buffer.append("\""); }
+<STRING>\\0         { buffer.append("\0"); }
+<STRING>\\r         { buffer.append("\r"); }
+<STRING>\\'         { buffer.append("'"); }
+
+    /* ошибочная escape */
+<STRING>\\. {
+    fprintf(stderr,
+        "Lexer error at line %d: invalid escape sequence '%s'\n",
+        yylineno,
+        yytext);
+
+    stringInvalid = true;
+}
+
+<STRING>[^\\\"\n]+  { buffer.append(yytext); }
 
 <STRING>\" {
-    printf("STRING: %s\n", buffer.get().c_str());
+    if (!stringInvalid) {
+        printf("STRING: %s\n", buffer.get().c_str());
+    }
     BEGIN(INITIAL);
 }
 
@@ -346,6 +364,8 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
             "Lexer error at line %d: unterminated string literal\n",
             buffer.getStartLine());
 
+    stringInvalid = true;
+    buffer.reset(yylineno);
     BEGIN(INITIAL);
 }
     /* конец файла внутри строки */
@@ -354,6 +374,8 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
             "Lexer error at line %d: unterminated string literal\n",
             buffer.getStartLine());
 
+    stringInvalid = true;
+    buffer.reset(yylineno);
     BEGIN(INITIAL);
 }
 
