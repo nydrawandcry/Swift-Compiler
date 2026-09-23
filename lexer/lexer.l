@@ -328,7 +328,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 \" {
     buffer.reset(yylineno);
     stringInvalid = false;
-    BEGIN(STRING);
+    yy_push_state(STRING);
 }
 
 <STRING>\\n         { buffer.append("\n"); }
@@ -352,10 +352,11 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 <STRING>[^\\\"\n]+  { buffer.append(yytext); }
 
 <STRING>\" {
-    if (!stringInvalid) {
+    if (!stringInvalid && !buffer.get().empty()) {
         printf("STRING: %s\n", buffer.get().c_str());
     }
-    BEGIN(INITIAL);
+    buffer.reset(yylineno);
+    yy_pop_state();
 }
 
     /* перевод строки - строка не закрыта */
@@ -366,7 +367,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
     stringInvalid = true;
     buffer.reset(yylineno);
-    BEGIN(INITIAL);
+    yy_pop_state();
 }
     /* конец файла внутри строки */
 <STRING><<EOF>> {
@@ -411,7 +412,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
 "/*" {
     commentDepth = 1;
-    BEGIN(COMMENT);
+    yy_push_state(COMMENT);
 }
 <COMMENT>"/*" {
     commentDepth++;
@@ -419,7 +420,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 <COMMENT>"*/" {
     commentDepth--;
     if(commentDepth == 0) {
-        BEGIN(INITIAL);
+        yy_pop_state();
     }
 }
 <COMMENT>"\n" {
@@ -449,12 +450,12 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
 {DOT_OPERATOR}  {
     printf("OPERATOR: %s\n", yytext);
-    BEGIN(AFTER_OPERATOR);
+    yy_push_state(AFTER_OPERATOR);
 }
 
 {OPERATOR}  {
     printf("OPERATOR: %s\n", yytext);
-    BEGIN(AFTER_OPERATOR);
+    yy_push_state(AFTER_OPERATOR);
 }
 
             /* operators / punctuation */
@@ -498,19 +499,19 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
 <AFTER_OPERATOR>[ \t\r]+ {
     /* найден whitespace после оператора */
-    BEGIN(INITIAL);
+    yy_pop_state();
     printf("WHITESPACE\n");
 }
 
 <AFTER_OPERATOR>\n+ {
     /* найден newline после оператора */
-    BEGIN(INITIAL);
+    yy_pop_state();
     printf("NEWLINE\n");
 }
 
 <AFTER_OPERATOR>. {
     /* нет whitespace/newline после оператора */
-    BEGIN(INITIAL);
+    yy_pop_state();
     yyless(0);
 }
 
