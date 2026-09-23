@@ -472,22 +472,28 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
         /* WHITESPACES */
 
-[ \t\r\n]+/({OPERATOR}|{DOT_OPERATOR}) { printf("WHITESPACE\n"); }
+[ \t\r]+/({OPERATOR}|{DOT_OPERATOR}) { printf("WHITESPACE\n"); }
 
-<AFTER_OPERATOR>[ \t\r\n]+ {
+<AFTER_OPERATOR>[ \t\r]+ {
     /* найден whitespace после оператора */
     BEGIN(INITIAL);
     printf("WHITESPACE\n");
 }
 
+<AFTER_OPERATOR>\n+ {
+    /* найден newline после оператора */
+    BEGIN(INITIAL);
+    printf("NEWLINE\n");
+}
+
 <AFTER_OPERATOR>. {
-    /* нет whitespace после оператора */
+    /* нет whitespace/newline после оператора */
     BEGIN(INITIAL);
     yyless(0);
 }
 
 [ \t\r]+     ;
-\n           ;
+\n+           { printf("NEWLINE\n"); }
 
 
     /* ERRORS */
