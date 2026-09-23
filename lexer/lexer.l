@@ -1,6 +1,7 @@
 %option noyywrap
 %option never-interactive
 %option yylineno
+%option stack
 
 %{
 #include <stdio.h>
@@ -9,6 +10,7 @@
 
 Buffer buffer;
 int commentDepth = 0;
+int interpolationDepth = 0;
     // флаг, чтобы не возвращать строку если в ней есть ошибки
 bool stringInvalid = false;
 %}
@@ -17,6 +19,7 @@ bool stringInvalid = false;
 %x COMMENT
 %x RAW_STRING
 %x AFTER_OPERATOR
+%s INTERPOLATION
 
     /* -~-~-~-~-~-~-~-~-~ NAMED GROUPS -~-~-~-~-~-~-~-~-~ */
 
@@ -331,6 +334,8 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     yy_push_state(STRING);
 }
 
+    /* escape последовательности */
+
 <STRING>\\n         { buffer.append("\n"); }
 <STRING>\\t         { buffer.append("\t"); }
 <STRING>\\\\        { buffer.append("\\"); }
@@ -338,6 +343,44 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 <STRING>\\0         { buffer.append("\0"); }
 <STRING>\\r         { buffer.append("\r"); }
 <STRING>\\'         { buffer.append("'"); }
+
+    /* интерполяция */
+
+<STRING>\\\( {
+    if (!stringInvalid && !buffer.get().empty()) {
+        printf("STRING: %s\n", buffer.get().c_str());
+    }
+
+    buffer.reset(yylineno);
+
+    printf("INTERPOLATION_START: \\(\n");
+    interpolationDepth = 1;
+    yy_push_state(INTERPOLATION);
+}
+
+<INTERPOLATION>"(" {
+    interpolationDepth++;
+    printf("PUNCTUATION: (\n");
+}
+
+<INTERPOLATION>")" {
+    interpolationDepth--;
+
+    if (interpolationDepth == 0) {
+        printf("INTERPOLATION_END: )\n");
+        yy_pop_state();
+    } else {
+        printf("PUNCTUATION: )\n");
+    }
+}
+
+<INTERPOLATION><<EOF>> {
+    fprintf(stderr,
+        "Lexer error at line %d: unterminated string interpolation\n",
+        yylineno);
+
+    interpolationDepth = 0;
+}
 
     /* ошибочная escape */
 <STRING>\\. {
