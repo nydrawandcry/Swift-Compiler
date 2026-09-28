@@ -405,6 +405,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
         yylineno);
 
     interpolationDepth = 0;
+    return 0; //по хорошему стоит везде на еофах так сделать
 }
 
     /* ошибочная escape */
