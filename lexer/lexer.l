@@ -13,6 +13,17 @@ int commentDepth = 0;
 int interpolationDepth = 0;
     // флаг, чтобы не возвращать строку если в ней есть ошибки
 bool stringInvalid = false;
+
+// для вывода чисел
+std::string digitBuffer = "";
+
+int intBuf = 0;
+float floatBuf = 0;
+double doubleBuf = 0;
+
+// функция для удаления нижнего подчеркивания
+void deleteUnderscores(const char* source, std::string& str);
+
 %}
 
 %x STRING
@@ -576,3 +587,18 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 }
 
 %%
+
+    /* FUNCTIONS */
+
+void deleteUnderscores(const char* source, std::string& str)
+{
+    str.clear();
+
+    for (const char* p = source; *p != '\0'; ++p)
+    {
+        if (*p != '_')
+        {
+            str.push_back(*p);
+        }
+    }
+}
