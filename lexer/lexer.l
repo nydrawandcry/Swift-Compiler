@@ -11,8 +11,10 @@
 Buffer buffer;
 int commentDepth = 0;
 int interpolationDepth = 0;
-    // флаг, чтобы не возвращать строку если в ней есть ошибки
+// флаг, чтобы не возвращать строку если в ней есть ошибки
 bool stringInvalid = false;
+// счетчик # при открытии raw строкиы
+int rawDelimiterLength = 0;
 
 // для вывода чисел
 std::string digitBuffer = "";
@@ -23,7 +25,8 @@ double doubleBuf = 0;
 
 // функция для удаления нижнего подчеркивания
 void deleteUnderscores(const char* source, std::string& str);
-
+// функция для подсчета #
+int countHashes(const char* text, int length, int start);
 %}
 
 %x STRING
@@ -451,18 +454,85 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
         /* RAW STRINGS */
 
-"#"\" {
+            /* открытие строки */
+
+#+\" {
+    rawDelimiterLength = yyleng - 1;
+
     buffer.reset(yylineno);
-    BEGIN(RAW_STRING);
+    stringInvalid = false;
+
+    yy_push_state(RAW_STRING);
 }
 
-<RAW_STRING>[^"]+ {
+            /* интерполяция в raw строках
+               если # меньше чем надо, то считается за обычный текст
+               если # больше чем надо, - некорректный ескейп (ошибка)
+            */
+
+<RAW_STRING>\\#+\( {
+    int hashCount = countHashes(yytext, yyleng, 1);
+
+    if (hashCount < rawDelimiterLength) {
+        buffer.append(yytext);
+    }
+    else if (hashCount > rawDelimiterLength) {
+        fprintf(stderr,
+            "Lexer error at line %d: invalid raw string interpolation escape '%s'\n",
+            yylineno,
+            yytext);
+
+        stringInvalid = true;
+    }
+    else {
+        if (!stringInvalid && !buffer.get().empty()) {
+            printf("RAW_STRING: %s\n", buffer.get().c_str());
+        }
+
+        buffer.reset(yylineno);
+        printf("INTERPOLATION_START: %s\n", yytext);
+        interpolationDepth = 1;
+        yy_push_state(INTERPOLATION);
+    }
+}
+
+            /* ескейп последовательности */
+
+            /* todo */
+
+            /* закрытие строки
+               если # меньше чем при открытии строки - считается обычным текстом
+               (продолжением строки)
+            */
+
+<RAW_STRING>\"#+ {
+    int hashCount = countHashes(yytext, yyleng, 1);
+
+    if (hashCount == rawDelimiterLength) {
+
+        if (!stringInvalid && !buffer.get().empty()) {
+            printf("RAW_STRING: %s\n", buffer.get().c_str());
+        }
+
+        buffer.reset(yylineno);
+        rawDelimiterLength = 0;
+
+        yy_pop_state();
+    }
+    else {
+        buffer.append(yytext);
+    }
+}
+
+
+<RAW_STRING>\" {
+    buffer.append("\"");
+}
+<RAW_STRING>[^\"\\\r\n]+ {
     buffer.append(yytext);
 }
-
-<RAW_STRING>\"# {
-    printf("RAW_STRING: %s\n", buffer.get().c_str());
-    BEGIN(INITIAL);
+<RAW_STRING>\\ {
+    buffer.append("\\");
 }
 
 <RAW_STRING><<EOF>> {
@@ -470,7 +540,9 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
             "Lexer error at line %d: unterminated raw string literal\n",
             buffer.getStartLine());
 
-    BEGIN(INITIAL);
+    buffer.reset(yylineno);
+    rawDelimiterLength = 0;
+    return 0;
 }
 
         /* COMMENTS */
@@ -634,4 +706,16 @@ void deleteUnderscores(const char* source, std::string& str)
             str.push_back(*p);
         }
     }
+}
+
+int countHashes(const char* text, int length, int start)
+{
+    int count = 0;
+
+    while (start < length && text[start] == '#') {
+        ++count;
+        ++start;
+    }
+
+    return count;
 }
