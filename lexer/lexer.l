@@ -27,6 +27,8 @@ double doubleBuf = 0;
 void deleteUnderscores(const char* source, std::string& str);
 // функция для подсчета #
 int countHashes(const char* text, int length, int start);
+// функция добавления в строку (буфер) escape последовательности
+void appendRawStringEscape(const char* replacement);
 %}
 
 %x STRING
@@ -498,7 +500,33 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
             /* ескейп последовательности */
 
-            /* todo */
+<RAW_STRING>\\#+n {
+    appendRawStringEscape("\n");
+}
+
+<RAW_STRING>\\#+t {
+    appendRawStringEscape("\t");
+}
+
+<RAW_STRING>\\#+r {
+    appendRawStringEscape("\r");
+}
+
+<RAW_STRING>\\#+0 {
+    appendRawStringEscape("\0");
+}
+
+<RAW_STRING>\\#+\\ {
+    appendRawStringEscape("\\");
+}
+
+<RAW_STRING>\\#+\" {
+    appendRawStringEscape("\"");
+}
+
+<RAW_STRING>\\#+\' {
+    appendRawStringEscape("'");
+}
 
             /* закрытие строки
                если # меньше чем при открытии строки - считается обычным текстом
@@ -718,4 +746,24 @@ int countHashes(const char* text, int length, int start)
     }
 
     return count;
+}
+
+void appendRawStringEscape(const char* replacement)
+{
+    int hashCount = countHashes(yytext, yyleng, 1);
+
+    if (hashCount < rawDelimiterLength) {
+        buffer.append(yytext);
+    }
+    else if (hashCount > rawDelimiterLength) {
+        fprintf(stderr,
+            "Lexer error at line %d: invalid raw string escape sequence '%s'\n",
+            yylineno,
+            yytext);
+
+        stringInvalid = true;
+    }
+    else {
+        buffer.append(replacement);
+    }
 }
