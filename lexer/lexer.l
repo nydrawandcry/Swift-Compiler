@@ -536,6 +536,22 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     appendRawStringEscape("'");
 }
 
+<RAW_STRING>\\#+. {
+    int hashCount = countHashes(yytext, yyleng, 1);
+
+    if (hashCount >= rawDelimiterLength) {
+        fprintf(stderr,
+            "Lexer error at line %d: invalid raw string escape sequence '%s'\n",
+            yylineno,
+            yytext);
+
+        stringInvalid = true;
+    }
+    else {
+        buffer.append(yytext);
+    }
+}
+
             /* закрытие строки
                если # меньше чем при открытии строки - считается обычным текстом
                (продолжением строки)
