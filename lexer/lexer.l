@@ -576,11 +576,12 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
         /* COMMENTS */
 
 "//"[^\n]* {
-    /* однострочный комментарий игнорируется */
+    printf("WHITESPACE\n"); //swift считает комментарии пробельными разделителями
 }
 
 "/*"{OPERATOR}? {
     yyless(2);
+    printf("WHITESPACE\n");
     commentDepth = 1;
     yy_push_state(COMMENT);
 }
@@ -594,7 +595,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     }
 }
 <COMMENT>"\n" {
-    /* yylineno автоматически увеличивается и считает строки */
+    printf("NEWLINE\n");
 }
 <COMMENT>. {
     /* игнорирование символов в комментарии */
