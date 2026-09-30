@@ -479,7 +479,8 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     /* однострочный комментарий игнорируется */
 }
 
-"/*" {
+"/*"{OPERATOR}? {
+    yyless(2);
     commentDepth = 1;
     yy_push_state(COMMENT);
 }
@@ -508,7 +509,8 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
     /* последовательность которая могла бы считаться оператором,
     но является зарезервированной под конец комментария. выдаем ошибку */
-"*/" {
+"*/"{OPERATOR}? {
+    yyless(2);
     fprintf(stderr,
         "Lexer error at line %d: unexpected end of block comment\n",
         yylineno
@@ -517,14 +519,30 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
         /* OPERATORS */
 
-{DOT_OPERATOR}  {
-    printf("OPERATOR: %s\n", yytext);
-    yy_push_state(AFTER_OPERATOR);
-}
+{DOT_OPERATOR}|{OPERATOR}  {
+    for(int i = 1; i + 1 < yyleng; ++i)
+    {
+        bool opensComment = yytext[i] == '/' &&
+                            (yytext[i + 1] == '/' ||
+                            yytext[i + 1] == '*');
+        bool closesComment = yytext[i] == '*' && yytext[i + 1] == '/';
 
-{OPERATOR}  {
-    printf("OPERATOR: %s\n", yytext);
-    yy_push_state(AFTER_OPERATOR);
+        if(opensComment || closesComment)
+        {
+            yyless(i);
+            break;
+        }
+    }
+
+    if(yyleng == 1 && yytext[0] == '.')
+    {
+        printf("DOT: .\n");
+    }
+    else
+    {
+        printf("OPERATOR: %s\n", yytext);
+        yy_push_state(AFTER_OPERATOR);
+    }
 }
 
             /* operators / punctuation */
