@@ -404,6 +404,14 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     }
 }
 
+<INTERPOLATION>\r\n|\r|\n {
+    fprintf(stderr,
+        "Lexer error at line %d: newline is not allowed in string interpolation\n",
+        yylineno);
+
+    return 0;
+}
+
 <INTERPOLATION><<EOF>> {
     fprintf(stderr,
         "Lexer error at line %d: unterminated string interpolation\n",
