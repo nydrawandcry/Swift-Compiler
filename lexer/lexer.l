@@ -555,7 +555,15 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
         yy_pop_state();
     }
+    else if (hashCount < rawDelimiterLength) {
+        buffer.append(yytext);
+    }
     else {
+        fprintf(stderr,
+            "Lexer error at line %d: too many '#' characters in closing delimiter\n",
+            yylineno);
+
+        stringInvalid = true;
         buffer.append(yytext);
     }
 }
