@@ -15,6 +15,8 @@ int interpolationDepth = 0;
 bool stringInvalid = false;
 // счетчик # при открытии raw строкиы
 int rawDelimiterLength = 0;
+// находимся ли мы в первой строке после """
+bool multilineFirstLine = false;
 
 // для вывода чисел
 std::string digitBuffer = "";
@@ -29,11 +31,23 @@ void deleteUnderscores(const char* source, std::string& str);
 int countHashes(const char* text, int length, int start);
 // функция добавления в строку (буфер) escape последовательности
 void appendRawStringEscape(const char* replacement);
+    // для многострочного текста
+// проверка, что содержимое многострочной строки не началось раньше перевода строки (потенциально какая то некрасивая функция функция)
+void checkMultilineContentStart();
+// добавление перевода строки в многострочном тексте
+void appendMultilineNewline();
+// добавление текста
+void appendMultilineText(const char* text);
+// вывод текста
+void printMultilineString(const char* tokenType, const std::string& indentation);
+// удаление отступов из строк текста
+std::string removeMultilineIndentation(const std::string& text, const std::string& indentation, bool& indentationIsValid);
 %}
 
 %x STRING
 %x COMMENT
 %x RAW_STRING
+%x MULTILINE_STRING
 %x AFTER_OPERATOR
 %s INTERPOLATION
 
@@ -357,6 +371,83 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 }
 
         /* STRINGS */
+
+        /* MULTILINE STRINGS */
+
+\"\"\" {
+    buffer.reset(yylineno);
+    stringInvalid = false;
+    multilineFirstLine = true;
+    yy_push_state(MULTILINE_STRING);
+}
+
+<MULTILINE_STRING>^[ \t]*\"\"\" {
+        // отступ перед закрытием строки """
+    std::string indentation(yytext, yyleng - 3);
+    printMultilineString("MULTILINE_STRING", indentation);
+    yy_pop_state();
+}
+
+<MULTILINE_STRING>\"\"\" {
+    checkMultilineContentStart();
+    fprintf(stderr,
+        "Lexer error at line %d: closing multiline string delimiter must begin on a new line\n",
+        yylineno);
+    stringInvalid = true;
+    buffer.append(yytext);
+}
+
+    /* продолжение строки через / и перенос строки */
+<MULTILINE_STRING>\\[ \t]*\r\n|\\[ \t]*\r|\\[ \t]*\n {
+    checkMultilineContentStart();
+}
+
+<MULTILINE_STRING>\\n         { checkMultilineContentStart(); buffer.append("\n"); }
+<MULTILINE_STRING>\\t         { checkMultilineContentStart(); buffer.append("\t"); }
+<MULTILINE_STRING>\\\\        { checkMultilineContentStart(); buffer.append("\\"); }
+<MULTILINE_STRING>\\\"        { checkMultilineContentStart(); buffer.append("\""); }
+<MULTILINE_STRING>\\0         { checkMultilineContentStart(); buffer.append("\0"); }
+<MULTILINE_STRING>\\r         { checkMultilineContentStart(); buffer.append("\r"); }
+<MULTILINE_STRING>\\'         { checkMultilineContentStart(); buffer.append("'"); }
+
+<MULTILINE_STRING>\\\( {
+    checkMultilineContentStart();
+    if (!stringInvalid && !buffer.get().empty()) {
+        printf("MULTILINE_STRING: %s\n", buffer.get().c_str());
+    }
+
+    buffer.reset(yylineno);
+    printf("INTERPOLATION_START: %s\n", yytext);
+    interpolationDepth = 1;
+    yy_push_state(INTERPOLATION);
+}
+
+<MULTILINE_STRING>\\. {
+    checkMultilineContentStart();
+    fprintf(stderr,
+        "Lexer error at line %d: invalid escape sequence '%s'\n",
+        yylineno,
+        yytext);
+    stringInvalid = true;
+}
+
+<MULTILINE_STRING>[^\\\"\r\n]+ {
+    checkMultilineContentStart();
+    buffer.append(yytext);
+}
+<MULTILINE_STRING>\" { checkMultilineContentStart(); buffer.append("\""); }
+
+<MULTILINE_STRING>\r\n|\r|\n {
+    appendMultilineNewline();
+}
+
+<MULTILINE_STRING><<EOF>> {
+    fprintf(stderr,
+        "Lexer error at line %d: unterminated multiline string literal\n",
+        buffer.getStartLine());
+    buffer.reset(yylineno);
+    BEGIN(INITIAL);
+}
 
 \" {
     buffer.reset(yylineno);
@@ -799,4 +890,104 @@ void appendRawStringEscape(const char* replacement)
     else {
         buffer.append(replacement);
     }
+}
+
+void checkMultilineContentStart()
+{
+    if (multilineFirstLine) {
+        fprintf(stderr,
+            "Lexer error at line %d: multiline string literal content must begin on a new line\n",
+            buffer.getStartLine());
+        stringInvalid = true;
+        multilineFirstLine = false;
+    }
+}
+
+void appendMultilineNewline()
+{
+    if (multilineFirstLine) {
+        multilineFirstLine = false;
+    }
+    else {
+        buffer.append("\n");
+    }
+}
+
+void appendMultilineText(const char* text)
+{
+    std::string normalized;
+
+    for (int i = 0; text[i] != '\0'; i++) {
+        if (text[i] == '\r') {
+            if (text[i + 1] == '\n') {
+                i++;
+            }
+            normalized.append("\n");
+        }
+        else {
+            normalized.append(1, text[i]);
+        }
+    }
+
+    buffer.append(normalized);
+}
+
+void printMultilineString(const char* tokenType, const std::string& indentation)
+{
+    bool indentationIsValid = true;
+    std::string text = removeMultilineIndentation(buffer.get(), indentation, indentationIsValid);
+        // проверка на валидное количество отступов
+    if (!indentationIsValid) {
+        fprintf(stderr,
+            "Lexer error at line %d: multiline string indentation does not match closing delimiter\n",
+            buffer.getStartLine());
+        stringInvalid = true;
+    }
+
+    if (!stringInvalid && !text.empty()) {
+        printf("%s: %s\n", tokenType, text.c_str());
+    }
+
+    buffer.reset(yylineno);
+}
+
+std::string removeMultilineIndentation(const std::string& text, const std::string& indentation, bool& indentationIsValid)
+{
+    std::string result;
+    int lineStart = 0;
+
+    while (lineStart < text.size()) {
+        int lineEnd = text.find('\n', lineStart);
+        bool hasNewline = lineEnd != std::string::npos;
+
+        if (!hasNewline) {
+            lineEnd = text.size();
+        }
+
+        std::string line = text.substr(lineStart, lineEnd - lineStart);
+        bool isBlank = line.find_first_not_of(" \t") == std::string::npos;
+
+        if (!isBlank) {
+            if (line.compare(0, indentation.size(), indentation) != 0) {
+                indentationIsValid = false;
+            }
+            else {
+                result.append(line.substr(indentation.size()));
+            }
+        }
+
+        if (hasNewline) {
+            result.append("\n");
+            lineStart = lineEnd + 1;
+        }
+        else {
+            break;
+        }
+    }
+
+    if (!result.empty() && result.back() == '\n') {
+        result.pop_back();
+    }
+
+    return result;
 }
