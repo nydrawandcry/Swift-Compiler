@@ -1,12 +1,40 @@
-//тест, проверяющий вложенную интерполяцию
-//в обычных и raw строках
+//тест, проверяющий интерполяцию (любую)
 
-let s = "A \(f("B \(x) C")) D"
 
-appendLiteral("<a href=\"https://twitter.com/\(twitter)\">@\(twitter)</a>")
+//STRING
+let simple = "x = \(x)"
+let repeated = "x = \(x), y = \(y)"
 
-//raw строка внутри интерполяции другой raw строки
+let parentheses = "result = \((x + (y * 2)))"
+let textParentheses = "text = \(String("(inside)"))"
 
-let s = ##"A \##(f(#"B"#)) C"##
+let nested = "A \(String("B \(x) C")) D"
+let threeLevels = "A \(String("B \(String("C \(x) D")) E")) G"
+let siblings = "A \(String("B \(x) C") + String("D \(y) E")) G"
 
-let s = "\q \(f("ok")) accepted?"
+
+//RAW-STRING
+let raw = #"literal = \(x), value = \#(y)"#
+let rawTwoHashes = ##"literal = \#(x), value = \##(y)"##
+let normalInsideRaw = ##"A \##(String("B \(x) C")) D"##
+let rawInsideNormal = "A \(String(#"B \#(x) C"#)) D"
+
+
+//MULTILINE-STRING
+let multiline = """
+Before
+x = \(x)
+After
+"""
+
+let rawMultiline = ##"""
+Literal: \(x)
+Value: \##(y)
+After
+"""##
+
+//экранирование (не должно быть интерполяции)
+let escaped = "literal = \\(x)"
+
+//RAW-STRING внутри интерполяции другой RAW-STRING
+let rawInsideRaw = ##"A \##(String(#"B \#(x) C"#)) D"##
