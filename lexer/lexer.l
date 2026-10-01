@@ -6,11 +6,13 @@
 %{
 #include <stdio.h>
 #include <string.h>
+#include <vector>
 #include "../utils/Buffer/Buffer.h"
 
 Buffer buffer;
 int commentDepth = 0;
-int interpolationDepth = 0;
+// счетчик для вложенной интерполяции
+std::vector<int> interpolationDepths;
 // флаг, чтобы не возвращать строку если в ней есть ошибки
 bool stringInvalid = false;
 // счетчик # при открытии raw строкиы
@@ -421,7 +423,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
     buffer.reset(yylineno);
     printf("INTERPOLATION_START: %s\n", yytext);
-    interpolationDepth = 1;
+    interpolationDepths.push_back(1);
     yy_push_state(INTERPOLATION);
 }
 
@@ -538,7 +540,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
         buffer.reset(yylineno);
         printf("INTERPOLATION_START: %s\n", yytext);
-        interpolationDepth = 1;
+        interpolationDepths.push_back(1);
         yy_push_state(INTERPOLATION);
     }
 }
@@ -611,21 +613,24 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     buffer.reset(yylineno);
 
     printf("INTERPOLATION_START: \\(\n");
-    interpolationDepth = 1;
+    interpolationDepths.push_back(1);
     yy_push_state(INTERPOLATION);
 }
 
 <INTERPOLATION>"(" {
-    interpolationDepth++;
+    ++interpolationDepths.back();
     printf("PUNCTUATION: (\n");
 }
 
 <INTERPOLATION>")" {
-    interpolationDepth--;
+    --interpolationDepths.back();
 
-    if (interpolationDepth == 0) {
+    if (interpolationDepths.back() == 0) {
         printf("INTERPOLATION_END: )\n");
-        yy_pop_state();
+
+        interpolationDepths.pop_back(); //конец текущей интерполяции
+
+        yy_pop_state(); //возврат в строку из которой вошли
     } else {
         printf("PUNCTUATION: )\n");
     }
@@ -636,6 +641,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
         "Lexer error at line %d: newline is not allowed in string interpolation\n",
         yylineno);
 
+    interpolationDepths.clear();
     return 0;
 }
 
@@ -644,7 +650,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
         "Lexer error at line %d: unterminated string interpolation\n",
         yylineno);
 
-    interpolationDepth = 0;
+    interpolationDepths.clear();
     return 0; //по хорошему стоит везде на еофах так сделать
 }
 
@@ -728,7 +734,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
         buffer.reset(yylineno);
         printf("INTERPOLATION_START: %s\n", yytext);
-        interpolationDepth = 1;
+        interpolationDepths.push_back(1);
         yy_push_state(INTERPOLATION);
     }
 }
