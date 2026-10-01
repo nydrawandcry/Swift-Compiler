@@ -29,6 +29,8 @@ double doubleBuf = 0;
 void deleteUnderscores(const char* source, std::string& str);
 // функция для подсчета #
 int countHashes(const char* text, int length, int start);
+// функция для подсчета # при закрытии многострочного raw текста
+int countClosingHashes(const char* text, int length);
 // функция добавления в строку (буфер) escape последовательности
 void appendRawStringEscape(const char* replacement);
     // для многострочного текста
@@ -48,6 +50,7 @@ std::string removeMultilineIndentation(const std::string& text, const std::strin
 %x COMMENT
 %x RAW_STRING
 %x MULTILINE_STRING
+%x RAW_MULTILINE_STRING
 %x AFTER_OPERATOR
 %s INTERPOLATION
 
@@ -446,6 +449,139 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
         "Lexer error at line %d: unterminated multiline string literal\n",
         buffer.getStartLine());
     buffer.reset(yylineno);
+    BEGIN(INITIAL);
+}
+
+        /* RAW MULTILINE STRINGS */
+
+#+\"\"\" {
+    rawDelimiterLength = yyleng - 3;
+    buffer.reset(yylineno);
+    stringInvalid = false;
+    multilineFirstLine = true;
+    yy_push_state(RAW_MULTILINE_STRING);
+}
+
+<RAW_MULTILINE_STRING>^[ \t]*\"\"\"#+ {
+    int hashCount = countClosingHashes(yytext, yyleng);
+
+    if (hashCount == rawDelimiterLength) {
+        std::string indentation(yytext, yyleng - 3 - rawDelimiterLength);
+        printMultilineString("RAW_MULTILINE_STRING", indentation);
+        rawDelimiterLength = 0;
+        yy_pop_state();
+    }
+    else if (hashCount < rawDelimiterLength) {
+        checkMultilineContentStart();
+        buffer.append(yytext);
+    }
+    else {
+        checkMultilineContentStart();
+        fprintf(stderr,
+            "Lexer error at line %d: too many '#' characters in closing delimiter\n",
+            yylineno);
+        stringInvalid = true;
+        buffer.append(yytext);
+    }
+}
+
+<RAW_MULTILINE_STRING>\"\"\"#+ {
+    int hashCount = countClosingHashes(yytext, yyleng);
+
+    checkMultilineContentStart();
+    if (hashCount == rawDelimiterLength) {
+        fprintf(stderr,
+            "Lexer error at line %d: closing multiline string delimiter must begin on a new line\n",
+            yylineno);
+        stringInvalid = true;
+    }
+    buffer.append(yytext);
+}
+
+    /* продолжение строки через / и перенос строки */
+<RAW_MULTILINE_STRING>\\#+[ \t]*\r\n|\\#+[ \t]*\r|\\#+[ \t]*\n {
+    int hashCount = countHashes(yytext, yyleng, 1);
+
+    checkMultilineContentStart();
+    if (hashCount == rawDelimiterLength) {
+    }
+    else if (hashCount > rawDelimiterLength) {
+        fprintf(stderr,
+            "Lexer error at line %d: invalid raw string escape sequence '%s'\n",
+            yylineno,
+            yytext);
+        stringInvalid = true;
+    }
+    else {
+        appendMultilineText(yytext);
+    }
+}
+
+<RAW_MULTILINE_STRING>\\#+\( {
+    int hashCount = countHashes(yytext, yyleng, 1);
+
+    checkMultilineContentStart();
+    if (hashCount < rawDelimiterLength) {
+        buffer.append(yytext);
+    }
+    else if (hashCount > rawDelimiterLength) {
+        fprintf(stderr,
+            "Lexer error at line %d: invalid raw string interpolation escape '%s'\n",
+            yylineno,
+            yytext);
+        stringInvalid = true;
+    }
+    else {
+        if (!stringInvalid && !buffer.get().empty()) {
+            printf("RAW_MULTILINE_STRING: %s\n", buffer.get().c_str());
+        }
+
+        buffer.reset(yylineno);
+        printf("INTERPOLATION_START: %s\n", yytext);
+        interpolationDepth = 1;
+        yy_push_state(INTERPOLATION);
+    }
+}
+
+<RAW_MULTILINE_STRING>\\#+n     { checkMultilineContentStart(); appendRawStringEscape("\n"); }
+<RAW_MULTILINE_STRING>\\#+t     { checkMultilineContentStart(); appendRawStringEscape("\t"); }
+<RAW_MULTILINE_STRING>\\#+r     { checkMultilineContentStart(); appendRawStringEscape("\r"); }
+<RAW_MULTILINE_STRING>\\#+0     { checkMultilineContentStart(); appendRawStringEscape("\0"); }
+<RAW_MULTILINE_STRING>\\#+\\    { checkMultilineContentStart(); appendRawStringEscape("\\"); }
+<RAW_MULTILINE_STRING>\\#+\"    { checkMultilineContentStart(); appendRawStringEscape("\""); }
+<RAW_MULTILINE_STRING>\\#+\'    { checkMultilineContentStart(); appendRawStringEscape("'"); }
+
+<RAW_MULTILINE_STRING>\\#+. {
+    int hashCount = countHashes(yytext, yyleng, 1);
+
+    checkMultilineContentStart();
+    if (hashCount >= rawDelimiterLength) {
+        fprintf(stderr,
+            "Lexer error at line %d: invalid raw string escape sequence '%s'\n",
+            yylineno,
+            yytext);
+        stringInvalid = true;
+    }
+    else {
+        buffer.append(yytext);
+    }
+}
+
+<RAW_MULTILINE_STRING>\"\"\"        { checkMultilineContentStart(); buffer.append(yytext); }
+<RAW_MULTILINE_STRING>\"            { checkMultilineContentStart(); buffer.append("\""); }
+<RAW_MULTILINE_STRING>[^\"\\\r\n]+  { checkMultilineContentStart(); buffer.append(yytext); }
+<RAW_MULTILINE_STRING>\\            { checkMultilineContentStart(); buffer.append("\\"); }
+
+<RAW_MULTILINE_STRING>\r\n|\r|\n {
+    appendMultilineNewline();
+}
+
+<RAW_MULTILINE_STRING><<EOF>> {
+    fprintf(stderr,
+        "Lexer error at line %d: unterminated raw multiline string literal\n",
+        buffer.getStartLine());
+    buffer.reset(yylineno);
+    rawDelimiterLength = 0;
     BEGIN(INITIAL);
 }
 
@@ -867,6 +1003,19 @@ int countHashes(const char* text, int length, int start)
     while (start < length && text[start] == '#') {
         ++count;
         ++start;
+    }
+
+    return count;
+}
+
+int countClosingHashes(const char* text, int length)
+{
+    // подсчет с конца
+    int count = 0;
+
+    while (length > 0 && text[length - 1] == '#') {
+        ++count;
+        --length;
     }
 
     return count;
