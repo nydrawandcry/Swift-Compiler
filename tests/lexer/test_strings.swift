@@ -1,5 +1,7 @@
 let s1 = "Hello"
 
+let s0 = ""
+
 let s2 = "Hello\nWorld"
 
 let s3 = "Tab:\tEnd"
