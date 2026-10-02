@@ -13,3 +13,10 @@ let y = 10
     /* inner */
    outer
 */
+
+let a = 1 /**/
+
+let a = 1 +/* comment */2
+
+let b = 1 +// comment
+2
