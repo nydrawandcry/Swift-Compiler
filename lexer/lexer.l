@@ -676,7 +676,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 <STRING>[^\\\"\n]+  { buffer.append(yytext); }
 
 <STRING>\" {
-    if (!stringInvalid && !buffer.get().empty()) {
+    if (!stringInvalid) {
         printf("STRING: %s\n", buffer.get().c_str());
     }
     endString();
@@ -800,7 +800,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
     if (hashCount == rawDelimiterLength) {
 
-        if (!stringInvalid && !buffer.get().empty()) {
+        if (!stringInvalid) {
             printf("RAW_STRING: %s\n", buffer.get().c_str());
         }
 
@@ -1102,7 +1102,7 @@ void printMultilineString(const char* tokenType, const std::string& indentation)
         stringInvalid = true;
     }
 
-    if (!stringInvalid && !text.empty()) {
+    if (!stringInvalid) {
         printf("%s: %s\n", tokenType, text.c_str());
     }
 
