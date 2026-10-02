@@ -19,6 +19,15 @@ bool stringInvalid = false;
 int rawDelimiterLength = 0;
 // находимся ли мы в первой строке после """
 bool multilineFirstLine = false;
+// структура данных для хранения информации о предыдущих строках (для вложенности)
+struct StringContext {
+    Buffer buffer;
+    bool stringInvalid;
+    int rawDelimiterLength;
+    bool multilineFirstLine;
+};
+//контейнер данных о предыдущих строках
+std::vector<StringContext> stringContexts;
 
 // для вывода чисел
 std::string digitBuffer = "";
@@ -46,6 +55,12 @@ void appendMultilineText(const char* text);
 void printMultilineString(const char* tokenType, const std::string& indentation);
 // удаление отступов из строк текста
 std::string removeMultilineIndentation(const std::string& text, const std::string& indentation, bool& indentationIsValid);
+// сохранить данные предыдущей строки и подготовить переменные к новой строке
+void beginString(int hashCount, bool isMultiline);
+// вернуть сохраненные данные после завершения строки
+void endString();
+// очистить данные при завершении/прерывании сканирования
+void clearStringContexts();
 %}
 
 %x STRING
@@ -380,9 +395,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
         /* MULTILINE STRINGS */
 
 \"\"\" {
-    buffer.reset(yylineno);
-    stringInvalid = false;
-    multilineFirstLine = true;
+    beginString(0, true);
     yy_push_state(MULTILINE_STRING);
 }
 
@@ -390,6 +403,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
         // отступ перед закрытием строки """
     std::string indentation(yytext, yyleng - 3);
     printMultilineString("MULTILINE_STRING", indentation);
+    endString();
     yy_pop_state();
 }
 
@@ -450,17 +464,14 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     fprintf(stderr,
         "Lexer error at line %d: unterminated multiline string literal\n",
         buffer.getStartLine());
-    buffer.reset(yylineno);
-    BEGIN(INITIAL);
+    clearStringContexts();
+    return 0;
 }
 
         /* RAW MULTILINE STRINGS */
 
 #+\"\"\" {
-    rawDelimiterLength = yyleng - 3;
-    buffer.reset(yylineno);
-    stringInvalid = false;
-    multilineFirstLine = true;
+    beginString(yyleng - 3, true);
     yy_push_state(RAW_MULTILINE_STRING);
 }
 
@@ -470,7 +481,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     if (hashCount == rawDelimiterLength) {
         std::string indentation(yytext, yyleng - 3 - rawDelimiterLength);
         printMultilineString("RAW_MULTILINE_STRING", indentation);
-        rawDelimiterLength = 0;
+        endString();
         yy_pop_state();
     }
     else if (hashCount < rawDelimiterLength) {
@@ -582,14 +593,12 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     fprintf(stderr,
         "Lexer error at line %d: unterminated raw multiline string literal\n",
         buffer.getStartLine());
-    buffer.reset(yylineno);
-    rawDelimiterLength = 0;
-    BEGIN(INITIAL);
+    clearStringContexts();
+    return 0;
 }
 
 \" {
-    buffer.reset(yylineno);
-    stringInvalid = false;
+    beginString(0, false);
     yy_push_state(STRING);
 }
 
@@ -641,7 +650,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
         "Lexer error at line %d: newline is not allowed in string interpolation\n",
         yylineno);
 
-    interpolationDepths.clear();
+    clearStringContexts();
     return 0;
 }
 
@@ -670,7 +679,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     if (!stringInvalid && !buffer.get().empty()) {
         printf("STRING: %s\n", buffer.get().c_str());
     }
-    buffer.reset(yylineno);
+    endString();
     yy_pop_state();
 }
 
@@ -681,7 +690,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
             buffer.getStartLine());
 
     stringInvalid = true;
-    buffer.reset(yylineno);
+    endString();
     yy_pop_state();
 }
     /* конец файла внутри строки */
@@ -690,9 +699,8 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
             "Lexer error at line %d: unterminated string literal\n",
             buffer.getStartLine());
 
-    stringInvalid = true;
-    buffer.reset(yylineno);
-    BEGIN(INITIAL);
+    clearStringContexts();
+    return 0;
 }
 
         /* RAW STRINGS */
@@ -700,10 +708,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
             /* открытие строки */
 
 #+\" {
-    rawDelimiterLength = yyleng - 1;
-
-    buffer.reset(yylineno);
-    stringInvalid = false;
+    beginString(yyleng - 1, false);
 
     yy_push_state(RAW_STRING);
 }
@@ -799,8 +804,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
             printf("RAW_STRING: %s\n", buffer.get().c_str());
         }
 
-        buffer.reset(yylineno);
-        rawDelimiterLength = 0;
+        endString();
 
         yy_pop_state();
     }
@@ -833,8 +837,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
             "Lexer error at line %d: unterminated raw string literal\n",
             buffer.getStartLine());
 
-    buffer.reset(yylineno);
-    rawDelimiterLength = 0;
+    clearStringContexts();
     return 0;
 }
 
@@ -1145,4 +1148,50 @@ std::string removeMultilineIndentation(const std::string& text, const std::strin
     }
 
     return result;
+}
+
+void beginString(int hashCount, bool isMultiline)
+{
+    // Сначала сохраняем данные предыдущей строки.
+    stringContexts.push_back({
+        buffer,
+        stringInvalid,
+        rawDelimiterLength,
+        multilineFirstLine
+    });
+
+    // Теперь подготавливаем данные новой строки.
+    buffer.reset(yylineno);
+    stringInvalid = false;
+    rawDelimiterLength = hashCount;
+    multilineFirstLine = isMultiline;
+}
+
+void endString()
+{
+    bool finishedStringInvalid = stringInvalid;
+
+    StringContext saved = stringContexts.back();
+    stringContexts.pop_back();
+
+    buffer = saved.buffer;
+    rawDelimiterLength = saved.rawDelimiterLength;
+    multilineFirstLine = saved.multilineFirstLine;
+
+    // ошибка внешней строки сохраняется.
+    // ошибка вложенной строки также делает внешнюю ошибочной.
+    stringInvalid = saved.stringInvalid || finishedStringInvalid;
+}
+
+void clearStringContexts()
+{
+    stringContexts.clear();
+    interpolationDepths.clear();
+
+    buffer.reset(yylineno);
+    rawDelimiterLength = 0;
+    multilineFirstLine = false;
+    stringInvalid = false;
+
+    BEGIN(INITIAL);
 }
