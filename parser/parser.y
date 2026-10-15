@@ -294,7 +294,7 @@ catch_clause:
     CATCH code_block
 ;
 
-// выражения
+// ------------ выражения
 expression:
       literal
     | IDENTIFIER
@@ -315,6 +315,7 @@ literal:
     | RAW_MULTILINE_STRING_LITERAL
 ;
 
+// ---------- вызов функции
 // опциональный список аргументов функции
 argument_list_opt:
       /* empty */
@@ -323,8 +324,15 @@ argument_list_opt:
 
 // список аргументов функции
 argument_list:
+      argument
+    | argument_list ',' argument
+;
+
+argument:
       expression
-    | argument_list ',' expression
+    | IDENTIFIER COLON expression
+;
+
 ;
 
 %%
