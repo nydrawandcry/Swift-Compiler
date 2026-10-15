@@ -7,29 +7,66 @@
 
 %}
 
-// ключевые слова
-%token LET VAR
 
-// идентификаторы и типы
+/* -~-~-~-~-~-~-~-~-~-~- KEYWORDS -~-~-~-~-~-~-~-~-~-~- */
+
+    // DECLARATIONS
+%token LET VAR FUNC IMPORT
+%token STRUCT CLASS ENUM PROTOCOL EXTENSION
+%token TYPEALIAS
+%token INIT DEINIT SUBSCRIPT ASSOCIATEDTYPE
+
+    // STATEMENTS
+%token IF ELSE GUARD
+%token FOR IN WHILE REPEAT
+%token RETURN BREAK CONTINUE FALLTHROUGH
+%token DEFER DO CATCH THROW SWITCH CASE DEFAULT
+
+    // EXPRESSIONS AND TYPES
 %token IDENTIFIER
-    /* todo типы добавить */
+%token TYPE
 
-// литералы
+    // LITERAL KEYWORDS
+%token TRUE FALSE NIL
+%token SELF SUPER
+%token AS IS AWAIT TRY
+%token ANY SELF_TYPE
+
+    // KEYWORDS RESERVED IN PARTICULAR CONTEXTS
+%token PUBLIC PRIVATE FILEPRIVATE INTERNAL OPEN
+%token STATIC FINAL OVERRIDE REQUIRED
+%token MUTATING NONMUTATING
+%token ASYNC THROWS RETHROWS
+%token GET SET WILLSET DIDSET
+
+
+/* -~-~-~-~-~-~-~-~-~-~- LITERALS -~-~-~-~-~-~-~-~-~-~- */
+
+    // NUMERIC LITERALS
 %token INTEGER_LITERAL
 %token FLOATING_POINT_LITERAL
 %token BOOLEAN_LITERAL
 %token NIL_LITERAL
 
-// строковые литералы
+    // STRINGS
 %token STRING_LITERAL
 %token RAW_STRING_LITERAL
 %token MULTILINE_STRING_LITERAL
 %token RAW_MULTILINE_STRING_LITERAL
 
-// операторы и специальные символы
-%token DOT NEWLINE
+    // операторы и специальные символы
+%token DOT COLON NEWLINE
 
 // я в крайнем недоразумении от сложившейся ситуации с операторами...
+    /*
+       приоритет определяется в зависимости от группы приоритета, к которой
+       принадлежит оператор -
+       https://developer.apple.com/documentation/swift/operator-declarations
+       при этом если операторы в одной группе вроде там еще влияет ассоциативность
+       ПРИ ЭТОМ можно еще задавать свои группы приоритетов
+       и когда задаешь свой оператор, то можешь указать группу приоритета,
+            иначе твой оператор будет принадлежать к дефолтной
+    */
 
 %start program
 
