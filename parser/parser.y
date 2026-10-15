@@ -78,7 +78,7 @@ program:
     | global_decl_list
 ;
 
-// объявления
+// объявления (список)
 global_decl_list:
       global_decl
     | global_decl_list separator global_decl
@@ -91,19 +91,129 @@ separator:
 ;
 
 global_decl:
-      variable_declaration
+      declaration
+    | statement
     | expression
-    /* todo дополнить */
+    /* todo дополнить?? или нечем уже */
 ;
+
+// объявление
+declaration:
+      variable_declaration
+    | function_declaration
+    | struct_declaration
+    | class_declaration
+    | enum_declaration
+    | protocol_declaration
+    | extension_declaration
+    | import_declaration
+    | typealias_declaration
+;
+
+    // ---------- переменные
 
 // объявление переменной
 variable_declaration:
-    /* todo с операторами бы разобраться */
+      LET IDENTIFIER type_annotation
+    | VAR IDENTIFIER type_annotation_opt // opt ли вообще
+    /* todo с операторами бы разобраться, присваивание нужно будет дописать */
 ;
+
+// аннотация типа (опциональная)
+type_annotation_opt:
+    /* empty */
+    | type_annotation
+;
+
+type_annotation:
+    COLON type
+;
+
+    // ---------- функции
+
+// объявление функции
+function_declaration:
+    FUNC IDENTIFIER '(' parameter_list_opt ')' function_body_opt
+    /* todo добавить возвращаемый тип через -> */
+;
+
+function_body_opt:
+    /* empty */
+    | code_block
+;
+
+// параметры
+parameter_list_opt:
+    /* empty */
+    | parameter_list
+;
+
+parameter_list:
+      parameter
+    | parameter_list ',' parameter
+;
+
+parameter:
+      IDENTIFIER COLON type
+    /* todo там какие то ярлыки еще, `_`, значения по умолчанию и inout */
+;
+
+    // ---------- структуры
+
+struct_declaration:
+    STRUCT IDENTIFIER '{' declaration_list_opt '}'
+;
+
+    // ---------- классы
+
+class_declaration:
+    CLASS IDENTIFIER '{' declaration_list_opt '}'
+;
+
+    // ---------- енамы
+
+enum_declaration:
+    ENUM IDENTIFIER '{' enum_member_list_opt '}'
+;
+
+enum_member_list_opt:
+    /* empty */
+    | enum_member_list
+;
+
+enum_member_list:
+      enum_member
+    | enum_member_list separator enum_member
+    | enum_member_list separator
+;
+
+enum_member:
+      CASE identifier_list
+    | declaration
+;
+
+identifier_list:
+      IDENTIFIER
+    | identifier_list ',' IDENTIFIER
+;
+
+        /*   !todo доделать объявления!   */
 
 // тип переменной
 type:
-    /* todo */
+      type_identifier
+    // todo массивы и тд и тп
+;
+
+type_identifier:
+      IDENTIFIER
+    | TYPE
+    | type_identifier DOT IDENTIFIER
+;
+
+// блок кода
+code_block:
+    '{' statement_list_opt '}'
 ;
 
 // выражения
