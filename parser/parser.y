@@ -216,6 +216,84 @@ code_block:
     '{' statement_list_opt '}'
 ;
 
+statement_list_opt:
+    /* empty */
+    | statement_list
+;
+
+statement_list:
+      statement
+    | statement_list separator statement
+    | statement_list separator
+;
+
+statement:
+      declaration
+    | expression
+    | if_statement
+    | while_statement
+    | for_statement
+    | repeat_while_statement
+    | return_statement
+    | break_statement
+    | continue_statement
+    | defer_statement
+    | do_statement
+;
+
+// чем дальше в лес, иф элс иф элс
+if_statement:
+      IF expression code_block
+    | IF expression code_block ELSE code_block
+    | IF expression code_block ELSE if_statement
+;
+
+// while
+while_statement:
+    WHILE expression code_block
+;
+
+// for in
+for_statement:
+    FOR IDENTIFIER IN expression code_block
+;
+
+// repeat
+repeat_while_statement:
+    REPEAT code_block WHILE expression
+;
+
+// return
+return_statement:
+      RETURN
+    | RETURN expression
+;
+
+// break
+break_statement:
+    BREAK
+;
+
+// continue
+continue_statement:
+    CONTINUE
+;
+
+// defer
+defer_statement:
+    DEFER code_block
+;
+
+// do-catch
+do_statement:
+      DO code_block
+    | DO code_block catch_clause
+;
+
+catch_clause:
+    CATCH code_block
+;
+
 // выражения
 expression:
       literal
