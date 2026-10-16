@@ -6,6 +6,7 @@
 %{
 #include <stdio.h>
 #include <string.h>
+#include <string>
 #include <vector>
 #include "../utils/Buffer/Buffer.h"
 
@@ -26,6 +27,26 @@ struct StringContext {
     int rawDelimiterLength;
     bool multilineFirstLine;
 };
+// перечисление типов операторов которые могут быть
+enum class OperatorType {
+    INFIX,
+    PREFIX,
+    POSTFIX
+};
+// структура для хранения оператора и инфы о нем
+struct Operator {
+    OperatorType type;
+    std::string str;
+};
+// считать начало файла разделителем
+static bool prevWhitespace = true;
+// был ли разделитель перед текущей лексемой
+static bool currentLeftWhitespace = true;
+// контекст и текст оператора, ожидающего проверки справа
+static bool operatorLeftWhitespace = true;
+static int operatorLine = 1;
+
+static Operator currentOperator{OperatorType::INFIX, ""};
 //контейнер данных о предыдущих строках
 std::vector<StringContext> stringContexts;
 
@@ -61,6 +82,18 @@ void beginString(int hashCount, bool isMultiline);
 void endString();
 // очистить данные при завершении/прерывании сканирования
 void clearStringContexts();
+// напечатать оператор
+void printOperator(bool rightWhitespace, bool followedByDot = false);
+
+// для сохранения и сбрасывания флага перед каждым правилом (для определения типа оператора)
+#define YY_USER_ACTION                                      \
+    do {                                                    \
+        if (YY_START != COMMENT &&                          \
+            YY_START != AFTER_OPERATOR) {                   \
+            currentLeftWhitespace = prevWhitespace;         \
+            prevWhitespace = false;                         \
+        }                                                   \
+    } while (false);
 %}
 
 %x STRING
@@ -438,6 +471,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     buffer.reset(yylineno);
     printf("INTERPOLATION_START: %s\n", yytext);
     interpolationDepths.push_back(1);
+    prevWhitespace = true;
     yy_push_state(INTERPOLATION);
 }
 
@@ -552,6 +586,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
         buffer.reset(yylineno);
         printf("INTERPOLATION_START: %s\n", yytext);
         interpolationDepths.push_back(1);
+        prevWhitespace = true;
         yy_push_state(INTERPOLATION);
     }
 }
@@ -623,10 +658,13 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
     printf("INTERPOLATION_START: \\(\n");
     interpolationDepths.push_back(1);
+    prevWhitespace = true;
     yy_push_state(INTERPOLATION);
 }
 
 <INTERPOLATION>"(" {
+    prevWhitespace = true;
+
     ++interpolationDepths.back();
     printf("PUNCTUATION: (\n");
 }
@@ -740,6 +778,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
         buffer.reset(yylineno);
         printf("INTERPOLATION_START: %s\n", yytext);
         interpolationDepths.push_back(1);
+        prevWhitespace = true;
         yy_push_state(INTERPOLATION);
     }
 }
@@ -844,12 +883,12 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
         /* COMMENTS */
 
 "//"[^\n]* {
-    printf("WHITESPACE\n"); //swift считает комментарии пробельными разделителями
+    prevWhitespace = true; //теперь устанавливаем тут флаг и не выводим whitespace
 }
 
 "/*"{OPERATOR}? {
     yyless(2);
-    printf("WHITESPACE\n");
+    prevWhitespace = true;
     commentDepth = 1;
     yy_push_state(COMMENT);
 }
@@ -909,7 +948,10 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     }
     else
     {
-        printf("OPERATOR: %s\n", yytext);
+        currentOperator.str.assign(yytext, yyleng);
+        operatorLeftWhitespace = currentLeftWhitespace;
+        operatorLine = yylineno;
+        //printf("OPERATOR: %s\n", yytext);
         yy_push_state(AFTER_OPERATOR);
     }
 }
@@ -927,22 +969,22 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 }
 
 "."    { printf("DOT: .\n"); }
-":"    { printf("COLON: :\n"); }
+":"    { prevWhitespace = true; printf("COLON: :\n"); }
 
         /* PUNCTUATION */
 
-","   { printf("PUNCTUATION: ,\n"); }
+","   { prevWhitespace = true; printf("PUNCTUATION: ,\n"); }
 
-"("   { printf("PUNCTUATION: (\n"); }
+"("   { prevWhitespace = true; printf("PUNCTUATION: (\n"); }
 ")"   { printf("PUNCTUATION: )\n"); }
 
-"{"   { printf("PUNCTUATION: {\n"); }
+"{"   { prevWhitespace = true; printf("PUNCTUATION: {\n"); }
 "}"   { printf("PUNCTUATION: }\n"); }
 
-"["   { printf("PUNCTUATION: [\n"); }
+"["   { prevWhitespace = true; printf("PUNCTUATION: [\n"); }
 "]"   { printf("PUNCTUATION: ]\n"); }
 
-";"   { printf("PUNCTUATION: ;\n"); }
+";"   { prevWhitespace = true; printf("PUNCTUATION: ;\n"); }
 
 "@"   { printf("PUNCTUATION: @\n"); }
 "#"   { printf("PUNCTUATION: #\n"); }
@@ -951,28 +993,60 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
         /* WHITESPACES */
 
-[ \t\r]+/({OPERATOR}|{DOT_OPERATOR}) { printf("WHITESPACE\n"); }
+[ \t\r]+/({OPERATOR}|{DOT_OPERATOR}) { prevWhitespace = true; }
 
 <AFTER_OPERATOR>[ \t\r]+ {
     /* найден whitespace после оператора */
+    printOperator(true);
+    prevWhitespace = true;
     yy_pop_state();
-    printf("WHITESPACE\n");
 }
 
 <AFTER_OPERATOR>\n+ {
     /* найден newline после оператора */
-    yy_pop_state();
-    printf("NEWLINE\n");
-}
-
-<AFTER_OPERATOR>. {
-    /* нет whitespace/newline после оператора */
+    printOperator(true);
     yy_pop_state();
     yyless(0);
 }
 
-[ \t\r]+     ;
-\n+           { printf("NEWLINE\n"); }
+<AFTER_OPERATOR>("//"|"/*") {
+    // комментарий считается whitespace после оператора
+    printOperator(true);
+
+    yy_pop_state();
+    yyless(0);
+}
+
+<AFTER_OPERATOR>. {
+    // пробела справа нет, но возможен разделитель-пунктуация
+    const char next = yytext[0];
+
+    const bool rightWhitespace = next == ')' ||
+                                 next == ']' ||
+                                 next == '}' ||
+                                 next == ',' ||
+                                 next == ';' ||
+                                 next == ':';
+
+    printOperator(rightWhitespace, next == '.');
+
+    yy_pop_state();
+    yyless(0);
+}
+
+<AFTER_OPERATOR><<EOF>> {
+    // считаем конец файла разделителем справа (тк начало файла - разделитель слева)
+    printOperator(true);
+
+    yy_pop_state();
+}
+
+[ \t\r]+ { prevWhitespace = true; }
+
+\n+ {
+    prevWhitespace = true;
+    printf("NEWLINE\n");
+}
 
 
     /* ERRORS */
@@ -1194,4 +1268,59 @@ void clearStringContexts()
     stringInvalid = false;
 
     BEGIN(INITIAL);
+}
+
+void printOperator(bool rightWhitespace, bool followedByDot)
+{
+    // делаем исключения для одиночных !, ? и следующей вплотную точки
+    if (!operatorLeftWhitespace &&
+        (currentOperator.str == "!" ||
+         currentOperator.str == "?" ||
+         followedByDot)) {
+        currentOperator.type = OperatorType::POSTFIX;
+    }
+    else if (operatorLeftWhitespace == rightWhitespace) {
+        currentOperator.type = OperatorType::INFIX;
+    }
+    else if (operatorLeftWhitespace) {
+        currentOperator.type = OperatorType::PREFIX;
+    }
+    else {
+        currentOperator.type = OperatorType::POSTFIX;
+    }
+
+    // отдельное правило для равно =
+    // патамушта присваивание не может быть префиксным или постфиксным
+    if (currentOperator.str == "=" &&
+        currentOperator.type != OperatorType::INFIX) {
+        fprintf(
+            stderr,
+            "Lexer error at line %d: '=' cannot be used "
+            "as a prefix or postfix operator\n",
+            operatorLine
+        );
+
+        currentOperator.str.clear();
+        return;
+    }
+
+    const char* tokenName = "";
+
+    switch (currentOperator.type) {
+        case OperatorType::INFIX:
+            tokenName = "INFIX_OPERATOR";
+            break;
+
+        case OperatorType::PREFIX:
+            tokenName = "PREFIX_OPERATOR";
+            break;
+
+        case OperatorType::POSTFIX:
+            tokenName = "POSTFIX_OPERATOR";
+            break;
+    }
+
+    printf("%s: %s\n", tokenName, currentOperator.str.c_str());
+
+    currentOperator.str.clear();
 }
