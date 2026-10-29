@@ -129,6 +129,33 @@ declaration:
     | typealias_declaration
 ;
 
+// чет типа интерфейса?
+// задает всякие свойства и поведение которое реализует "наследник" этого протокола
+protocol_declaration:
+    PROTOCOL IDENTIFIER '{' declaration_list_opt '}'
+;
+
+// расширение какого либо типа
+// по сути можно дополнить какой нибудь тип указанными функциями/свойствами
+extension_declaration:
+    EXTENSION type_identifier '{' declaration_list_opt '}'
+;
+
+
+import_declaration:
+    IMPORT import_path
+;
+
+import_path:
+      IDENTIFIER
+    | import_path DOT IDENTIFIER
+;
+
+// создание альтернативного имени для существующего типа
+typealias_declaration:
+    TYPEALIAS IDENTIFIER EQUAL type
+;
+
     // ---------- переменные
 
 // объявление переменной
