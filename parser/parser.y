@@ -183,6 +183,22 @@ struct_declaration:
     STRUCT IDENTIFIER '{' declaration_list_opt '}'
 ;
 
+declaration_list_opt:
+      /* empty */
+    | declaration_list
+;
+
+declaration_list:
+      newline_list_opt declaration_list_core newline_list_opt
+;
+
+declaration_list_core:
+      declaration
+    | declaration_list_core newline_list declaration
+    | declaration_list_core newline_list_opt ';' newline_list_opt declaration
+    | declaration_list_core newline_list_opt ';'
+;
+
     // ---------- классы
 
 class_declaration:
