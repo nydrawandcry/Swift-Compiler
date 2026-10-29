@@ -95,10 +95,7 @@ separator:
 ;
 
 global_decl:
-      declaration
-    | statement
-    | expression
-    /* todo дополнить?? или нечем уже */
+      statement
 ;
 
 // объявление
@@ -335,19 +332,6 @@ argument_list:
 argument:
       expression
     | IDENTIFIER COLON expression
-;
-
-// ---------- литералы
-
-literal:
-      INTEGER_LITERAL
-    | FLOATING_POINT_LITERAL
-    | BOOLEAN_LITERAL
-    | NIL_LITERAL
-    | STRING_LITERAL
-    | RAW_STRING_LITERAL
-    | MULTILINE_STRING_LITERAL
-    | RAW_MULTILINE_STRING_LITERAL
 ;
 
 %%
