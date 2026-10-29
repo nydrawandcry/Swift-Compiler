@@ -59,7 +59,7 @@
 %token INFIX_OPERATOR
 %token POSTFIX_OPERATOR
 %token EQUAL
-%token DOT COLON NEWLINE
+%token NEWLINE
 
 // я в крайнем недоразумении от сложившейся ситуации с операторами...
     /*
@@ -84,27 +84,32 @@ program:
 
 // список объявлений, разрешены несколько разделителей до и после списка
 global_decl_list:
-    separator_list_opt global_decl_list_core separator_list_opt
+    newline_list_opt global_decl_list_core newline_list_opt
 ;
 
+// разрешается только несколько newline подряд
+// до ; обязательно должен быть какой нибудь statement, иначе ошибка
+// (следовательно из за этого и несколько ; подряд нельзя)
+
+// при этом разрешается еще такая конструкция, когда между стейтент и ; несколько newline
+// let a = 10
+//
+// ;
 global_decl_list_core:
       global_decl
-    | global_decl_list_core separator_list global_decl
+    | global_decl_list_core newline_list global_decl
+    | global_decl_list_core newline_list_opt ';' newline_list_opt global_decl
+    | global_decl_list_core newline_list_opt ';'
 ;
 
-separator_list_opt:
+newline_list_opt:
       /* empty */
-    | separator_list
+    | newline_list
 ;
 
-separator_list:
-      separator
-    | separator_list separator
-;
-
-separator:
+newline_list:
       NEWLINE
-    | ';'
+    | newline_list NEWLINE
 ;
 
 global_decl:
@@ -196,9 +201,14 @@ enum_member_list_opt:
 ;
 
 enum_member_list:
+      newline_list_opt enum_member_list_core newline_list_opt
+;
+
+enum_member_list_core:
       enum_member
-    | enum_member_list separator enum_member
-    | enum_member_list separator
+    | enum_member_list_core newline_list enum_member
+    | enum_member_list_core newline_list_opt ';' newline_list_opt enum_member
+    | enum_member_list_core newline_list_opt ';'
 ;
 
 enum_member:
@@ -236,9 +246,14 @@ statement_list_opt:
 ;
 
 statement_list:
+      newline_list_opt statement_list_core newline_list_opt
+;
+
+statement_list_core:
       statement
-    | statement_list separator statement
-    | statement_list separator
+    | statement_list_core newline_list statement
+    | statement_list_core newline_list_opt ';' newline_list_opt statement
+    | statement_list_core newline_list_opt ';'
 ;
 
 statement:
