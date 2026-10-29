@@ -148,7 +148,7 @@ import_declaration:
 
 import_path:
       IDENTIFIER
-    | import_path DOT IDENTIFIER
+    | import_path '.' IDENTIFIER
 ;
 
 // создание альтернативного имени для существующего типа
@@ -172,7 +172,7 @@ variable_tail:
 ;
 
 type_annotation:
-    COLON type
+    ':' type
 ;
 
     // ---------- функции
@@ -200,7 +200,7 @@ parameter_list:
 ;
 
 parameter:
-      IDENTIFIER COLON type
+      IDENTIFIER ':' type
     /* todo там какие то ярлыки еще, `_`, значения по умолчанию и inout */
 ;
 
@@ -275,7 +275,7 @@ type:
 type_identifier:
       IDENTIFIER
     | TYPE
-    | type_identifier DOT IDENTIFIER
+    | type_identifier '.' IDENTIFIER
 ;
 
 // блок кода
@@ -455,7 +455,7 @@ argument_list:
 
 argument:
       expression
-    | IDENTIFIER COLON expression
+    | IDENTIFIER ':' expression
 ;
 
 %%
