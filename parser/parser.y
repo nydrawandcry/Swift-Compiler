@@ -133,15 +133,15 @@ declaration:
 
 // объявление переменной
 variable_declaration:
-      LET IDENTIFIER type_annotation
-    | VAR IDENTIFIER type_annotation_opt // opt ли вообще
-    /* todo с операторами бы разобраться, присваивание нужно будет дописать */
+      LET IDENTIFIER variable_tail
+    | VAR IDENTIFIER variable_tail
 ;
 
-// аннотация типа (опциональная)
-type_annotation_opt:
-    /* empty */
+// пусто быть не может: либо указывается тип, либо выражение, либо и то и то
+variable_tail:
     | type_annotation
+    | EQUAL expression
+    | type_annotation EQUAL expression
 ;
 
 type_annotation:
