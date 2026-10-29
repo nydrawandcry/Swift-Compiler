@@ -82,11 +82,24 @@ program:
     | global_decl_list
 ;
 
-// объявления (список)
+// список объявлений, разрешены несколько разделителей до и после списка
 global_decl_list:
+    separator_list_opt global_decl_list_core separator_list_opt
+;
+
+global_decl_list_core:
       global_decl
-    | global_decl_list separator global_decl
-    | global_decl_list separator
+    | global_decl_list_core separator_list global_decl
+;
+
+separator_list_opt:
+      /* empty */
+    | separator_list
+;
+
+separator_list:
+      separator
+    | separator_list separator
 ;
 
 separator:
