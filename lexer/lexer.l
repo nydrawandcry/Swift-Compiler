@@ -1291,15 +1291,20 @@ void printOperator(bool rightWhitespace, bool followedByDot)
 
     // отдельное правило для равно =
     // патамушта присваивание не может быть префиксным или постфиксным
-    if (currentOperator.str == "=" &&
-        currentOperator.type != OperatorType::INFIX) {
-        fprintf(
-            stderr,
-            "Lexer error at line %d: '=' cannot be used "
-            "as a prefix or postfix operator\n",
-            operatorLine
-        );
+    if (currentOperator.str == "=") {
+        if (currentOperator.type != OperatorType::INFIX) {
+            fprintf(
+                stderr,
+                "Lexer error at line %d: '=' cannot be used "
+                "as a prefix or postfix operator\n",
+                operatorLine
+            );
 
+            currentOperator.str.clear();
+            return;
+        }
+
+        printf("EQUAL: %s\n", currentOperator.str.c_str());
         currentOperator.str.clear();
         return;
     }
