@@ -54,7 +54,11 @@
 %token MULTILINE_STRING_LITERAL
 %token RAW_MULTILINE_STRING_LITERAL
 
-    // операторы и специальные символы
+    // OPERATORS
+%token PREFIX_OPERATOR
+%token INFIX_OPERATOR
+%token POSTFIX_OPERATOR
+%token EQUAL
 %token DOT COLON NEWLINE
 
 // я в крайнем недоразумении от сложившейся ситуации с операторами...
