@@ -314,11 +314,64 @@ statement:
 ;
 
 // чем дальше в лес, иф элс иф элс
+// господи https://docs.swift.org/latest/documentation/the-swift-programming-language/statements/#If-Statement
 if_statement:
-      IF expression code_block
-    | IF expression code_block ELSE code_block
-    | IF expression code_block ELSE if_statement
+    IF condition_list code_block else_clause_opt
 ;
+
+condition_list:
+      condition
+    | condition_list ',' condition
+;
+
+// скобки круглые опциональные (есть в експрешн)
+condition:
+      expression
+    | availability_condition
+    | case_condition
+    | optional_binding_condition
+;
+
+else_clause_opt:
+      /* empty */
+    | ELSE code_block
+    | ELSE if_statement
+;
+
+// ----------- условия
+
+// optional_binding_condition - проверяет переменную есть ли в ней значение (не нулл) и помещает значение в переменную если та указана
+    // `if let name ...` ИЛИ `if let name = optName ...`
+optional_binding_condition:
+      LET IDENTIFIER
+    | LET IDENTIFIER initializer
+    | VAR IDENTIFIER
+    | VAR IDENTIFIER initializer
+;
+
+// проверка на соответствие с образцом
+// (что то типа аналога `==`)
+case_condition:
+    /* todo тут я так понимаю надо какие то паттерны реализовывать (добавить правило для них и сюда втулить) */
+    /* https://docs.swift.org/latest/documentation/the-swift-programming-language/patterns/ */
+;
+
+// todo availability_condition
+// проверка доступности апи для определенной платформы (не знаю может и не надо, у нас вроде лексер не распознает такие слова)
+/*
+    availability-condition → #available ( availability-arguments )
+    availability-condition → #unavailable ( availability-arguments )
+    availability-arguments → availability-argument | availability-argument , availability-arguments
+    availability-argument → platform-name platform-version
+    availability-argument → *
+
+    platform-name → iOS | iOSApplicationExtension
+    platform-name → ...
+    platform-version → decimal-digits
+    platform-version → ...
+*/
+
+// -----------------
 
 // while
 while_statement:
