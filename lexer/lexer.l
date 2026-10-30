@@ -113,6 +113,10 @@ void endString();
 void clearStringContexts();
 // напечатать оператор
 void printOperator(bool rightWhitespace, bool followedByDot = false);
+//чтение целых чисел (для парсера)
+int readInteger(const char* text, int base, int skip);
+//чтение чисел с плавающей точкой (для парсера)
+int readFloating(const char* text, int base);
 
 // для сохранения и сбрасывания флага перед каждым правилом (для определения типа оператора)
 #define YY_USER_ACTION                                      \
@@ -1460,4 +1464,71 @@ void printOperator(bool rightWhitespace, bool followedByDot)
     printf("%s: %s\n", tokenName, currentOperator.str.c_str());
 
     currentOperator.str.clear();
+}
+
+int readInteger(const char* text, int base, int skip) {
+    std::string digits;
+
+    deleteUnderscores(text + skip, digits);
+
+    try {
+        unsigned long long value =
+            std::stoull(digits, nullptr, base);
+
+        yylval.token = makeValue(text);
+
+        yylval.token->integerValue = value;
+        yylval.token->numberBase = base;
+
+        return INTEGER_LITERAL;
+    }
+    catch (const std::invalid_argument&) {
+        lexerError(
+            "Lexer error at line %d: invalid integer '%s'\n",
+            currentMatch.first_line,
+            text
+        );
+    }
+    catch (const std::out_of_range&) {
+        lexerError(
+            "Lexer error at line %d: integer out of range '%s'\n",
+            currentMatch.first_line,
+            text
+        );
+    }
+
+    return LEX_ERROR;
+}
+
+int readFloating(const char* text, int base) {
+    std::string digits;
+
+    deleteUnderscores(text, digits);
+
+    try {
+        double value = std::stod(digits);
+
+        yylval.token = makeValue(text);
+
+        yylval.token->floatingValue = value;
+        yylval.token->numberBase = base;
+
+        return FLOATING_POINT_LITERAL;
+    }
+    catch (const std::invalid_argument&) {
+        lexerError(
+            "Lexer error at line %d: invalid float '%s'\n",
+            currentMatch.first_line,
+            text
+        );
+    }
+    catch (const std::out_of_range&) {
+        lexerError(
+            "Lexer error at line %d: float out of range '%s'\n",
+            currentMatch.first_line,
+            text
+        );
+    }
+
+    return LEX_ERROR;
 }
