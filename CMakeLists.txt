@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(FLEX REQUIRED)
-find_package(BISON 3.7 REQUIRED)
+find_package(BISON 2.7 REQUIRED)
 
 if(NOT FLEX_EXECUTABLE)
     message(FATAL_ERROR "Flex not found. Install Flex and try again.")

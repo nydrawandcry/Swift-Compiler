@@ -4,8 +4,8 @@
   #include <stdio.h>
   #include <stdlib.h>
   #include <iostream>
-  #include "utils/LexerSupport.h"
 
+  int yylex();
   void yyerror(const char* message);
 
 %}
