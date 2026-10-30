@@ -185,77 +185,91 @@ FLOAT_HEXADECIMAL 0x{HEX_DIGITS}(\.{HEX_DIGITS})?{HEX_EXPONENT}
 
             /* DECLARATIONS */
 
-"associatedtype"    { printf("KEYWORD: associatedtype\n"); }
+"associatedtype"    { return ASSOCIATEDTYPE; }
 "borrowing"         { printf("KEYWORD: borrowing\n"); }
-"class"             { printf("KEYWORD: class\n"); }
+"class"             { return CLASS; }
 "consuming"         { printf("KEYWORD: consuming\n"); }
-"deinit"            { printf("KEYWORD: deinit\n"); }
-"enum"              { printf("KEYWORD: enum\n"); }
-"extension"         { printf("KEYWORD: extension\n"); }
-"fileprivate"       { printf("KEYWORD: fileprivate\n"); }
-"func"              { printf("KEYWORD: func\n"); }
-"import"            { printf("KEYWORD: import\n"); }
-"init"              { printf("KEYWORD: init\n"); }
+"deinit"            { return DEINIT; }
+"enum"              { return ENUM; }
+"extension"         { return EXTENSION; }
+"fileprivate"       { return FILEPRIVATE; }
+"func"              { return FUNC; }
+"import"            { return IMPORT; }
+"init"              { return INIT; }
 "inout"             { printf("KEYWORD: inout\n"); }
-"internal"          { printf("KEYWORD: internal\n"); }
-"let"               { printf("KEYWORD: let\n"); }
+"internal"          { return INTERNAL; }
+"let"               { return LET; }
 "nonisolated"       { printf("KEYWORD: nonisolated\n"); }
-"open"              { printf("KEYWORD: open\n"); }
+"open"              { return OPEN; }
 "operator"          { printf("KEYWORD: operator\n"); }
 "precedencegroup"   { printf("KEYWORD: precedencegroup\n"); }
-"private"           { printf("KEYWORD: private\n"); }
-"protocol"          { printf("KEYWORD: protocol\n"); }
-"public"            { printf("KEYWORD: public\n"); }
-"rethrows"          { printf("KEYWORD: rethrows\n"); }
-"static"            { printf("KEYWORD: static\n"); }
-"struct"            { printf("KEYWORD: struct\n"); }
-"subscript"         { printf("KEYWORD: subscript\n"); }
-"typealias"         { printf("KEYWORD: typealias\n"); }
-"var"               { printf("KEYWORD: var\n"); }
+"private"           { return PRIVATE; }
+"protocol"          { return PROTOCOL; }
+"public"            { return PUBLIC; }
+"rethrows"          { return RETHROWS; }
+"static"            { return STATIC; }
+"struct"            { return STRUCT; }
+"subscript"         { return SUBSCRIPT; }
+"typealias"         { return TYPEALIAS; }
+"var"               { return VAR; }
 
             /* STATEMENTS */
 
-"break"             { printf("KEYWORD: break\n"); }
-"case"              { printf("KEYWORD: case\n"); }
-"catch"             { printf("KEYWORD: catch\n"); }
-"continue"          { printf("KEYWORD: continue\n"); }
-"default"           { printf("KEYWORD: default\n"); }
-"defer"             { printf("KEYWORD: defer\n"); }
-"do"                { printf("KEYWORD: do\n"); }
-"else"              { printf("KEYWORD: else\n"); }
-"fallthrough"       { printf("KEYWORD: fallthrough\n"); }
-"for"               { printf("KEYWORD: for\n"); }
-"guard"             { printf("KEYWORD: guard\n"); }
-"if"                { printf("KEYWORD: if\n"); }
-"in"                { printf("KEYWORD: in\n"); }
-"repeat"            { printf("KEYWORD: repeat\n"); }
-"return"            { printf("KEYWORD: return\n"); }
-"switch"            { printf("KEYWORD: switch\n"); }
-"throw"             { printf("KEYWORD: throw\n"); }
+"break"             { return BREAK; }
+"case"              { return CASE; }
+"catch"             { return CATCH; }
+"continue"          { return CONTINUE; }
+"default"           { return DEFAULT; }
+"defer"             { return DEFER; }
+"do"                { return DO; }
+"else"              { return ELSE; }
+"fallthrough"       { return FALLTHROUGH; }
+"for"               { return FOR; }
+"guard"             { return GUARD; }
+"if"                { return IF; }
+"in"                { return IN; }
+"repeat"            { return REPEAT; }
+"return"            { return RETURN; }
+"switch"            { return SWITCH; }
+"throw"             { return THROW; }
 "where"             { printf("KEYWORD: where\n"); }
-"while"             { printf("KEYWORD: while\n"); }
+"while"             { return WHILE; }
 
             /* EXPRESSIONS AND TYPES */
 
-"Any"               { printf("KEYWORD: Any\n"); }
-"as"                { printf("KEYWORD: as\n"); }
-"await"             { printf("KEYWORD: await\n"); }
-"is"                { printf("KEYWORD: is\n"); }
-"self"              { printf("KEYWORD: self\n"); }
-"Self"              { printf("KEYWORD: Self\n"); }
-"super"             { printf("KEYWORD: super\n"); }
-"throws"            { printf("KEYWORD: throws\n"); }
-"try"               { printf("KEYWORD: try\n"); }
+"Any"               { return ANY; }
+"as"                { return AS; }
+"await"             { return AWAIT; }
+"is"                { return IS; }
+"self"              { return SELF; }
+"Self"              { return SELF_TYPE; /*разница с обычным self!*/ }
+"super"             { return SUPER; }
+"throws"            { return THROWS; }
+"try"               { return TRY; }
 
             /* LITERAL KEYWORDS */
 
-"true"              { printf("BOOLEAN_LITERAL: true\n"); }
-"false"             { printf("BOOLEAN_LITERAL: false\n"); }
-"nil"               { printf("NIL_LITERAL: nil\n"); }
+"true" {
+    yylval.token = makeValue(yytext);
+
+    return BOOLEAN_LITERAL; //в парсере используется такой литерал
+}
+"false" {
+    yylval.token = makeValue(yytext);
+
+    return BOOLEAN_LITERAL;
+}
+"nil" {
+    yylval.token = makeValue(yytext);
+
+    return NIL_LITERAL; //аналогично ( TODO доработать)
+}
 
             /* KEYWORDS USED IN PATTERNS: _ */
 
-_                   { printf("KEYWORD: used in patterns _\n"); }
+_ {
+    return '_';
+}
 
             /* KEYWORDS THAT BEGIN WITH A NUMBER SIGN (#) */
 
@@ -286,58 +300,154 @@ _                   { printf("KEYWORD: used in patterns _\n"); }
                         парсер разберется */
 
 "associativity"      { printf("CONTEXTUAL_KEYWORD: associativity\n"); }
-"async"              { printf("CONTEXTUAL_KEYWORD: async\n"); }
+"async"              { return ASYNC; }
 "convenience"        { printf("CONTEXTUAL_KEYWORD: convenience\n"); }
-"didSet"             { printf("CONTEXTUAL_KEYWORD: didSet\n"); }
+"didSet"             { return DIDSET; }
 "dynamic"            { printf("CONTEXTUAL_KEYWORD: dynamic\n"); }
-"final"              { printf("CONTEXTUAL_KEYWORD: final\n"); }
-"get"                { printf("CONTEXTUAL_KEYWORD: get\n"); }
+"final"              { return FINAL; }
+"get"                { return GET; }
 "indirect"           { printf("CONTEXTUAL_KEYWORD: indirect\n"); }
 "infix"              { printf("CONTEXTUAL_KEYWORD: infix\n"); }
 "lazy"               { printf("CONTEXTUAL_KEYWORD: lazy\n"); }
 "left"               { printf("CONTEXTUAL_KEYWORD: left\n"); }
-"mutating"           { printf("CONTEXTUAL_KEYWORD: mutating\n"); }
+"mutating"           { return MUTATING; }
 "none"               { printf("CONTEXTUAL_KEYWORD: none\n"); }
-"nonmutating"        { printf("CONTEXTUAL_KEYWORD: nonmutating\n"); }
+"nonmutating"        { return NONMUTATING; }
 "optional"           { printf("CONTEXTUAL_KEYWORD: optional\n"); }
-"override"           { printf("CONTEXTUAL_KEYWORD: override\n"); }
+"override"           { return OVERRIDE; }
 "package"            { printf("CONTEXTUAL_KEYWORD: package\n"); }
 "postfix"            { printf("CONTEXTUAL_KEYWORD: postfix\n"); }
 "precedence"         { printf("CONTEXTUAL_KEYWORD: precedence\n"); }
 "prefix"             { printf("CONTEXTUAL_KEYWORD: prefix\n"); }
 "Protocol"           { printf("CONTEXTUAL_KEYWORD: Protocol\n"); }
-"required"           { printf("CONTEXTUAL_KEYWORD: required\n"); }
+"required"           { return REQUIRED; }
 "right"              { printf("CONTEXTUAL_KEYWORD: right\n"); }
-"set"                { printf("CONTEXTUAL_KEYWORD: set\n"); }
+"set"                { return SET; }
 "some"               { printf("CONTEXTUAL_KEYWORD: some\n"); }
 "Type"               { printf("CONTEXTUAL_KEYWORD: Type\n"); }
 "unowned"            { printf("CONTEXTUAL_KEYWORD: unowned\n"); }
 "weak"               { printf("CONTEXTUAL_KEYWORD: weak\n"); }
-"willSet"            { printf("CONTEXTUAL_KEYWORD: willSet\n"); }
+"willSet"            { return WILLSET; }
 
         /* TYPES */
 
-Int                  { printf("TYPE (Int): %s\n", yytext); }
-Int8                 { printf("TYPE (Int8): %s\n", yytext); }
-Int16                { printf("TYPE (Int16): %s\n", yytext); }
-Int32                { printf("TYPE (Int32): %s\n", yytext); }
-Int64                { printf("TYPE (Int64): %s\n", yytext); }
-UInt                 { printf("TYPE (UInt): %s\n", yytext); }
-UInt8                { printf("TYPE (UInt8): %s\n", yytext); }
-UInt16               { printf("TYPE (UInt16): %s\n", yytext); }
-UInt32               { printf("TYPE (UInt32): %s\n", yytext); }
-UInt64               { printf("TYPE (UInt64): %s\n", yytext); }
-Float                { printf("TYPE (Float): %s\n", yytext); }
-Float80              { printf("TYPE (Float80): %s\n", yytext); }
-Double               { printf("TYPE (Double): %s\n", yytext); }
-Bool                 { printf("TYPE (Bool): %s\n", yytext); }
-String               { printf("TYPE (String): %s\n", yytext); }
-Character            { printf("TYPE (Character): %s\n", yytext); }
+Int {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Int;
+
+    return TYPE;
+}
+
+Int8 {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Int8;
+
+    return TYPE;
+}
+
+Int16 {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Int16;
+
+    return TYPE;
+}
+
+Int32 {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Int32;
+
+    return TYPE;
+}
+
+Int64 {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Int64;
+
+    return TYPE;
+}
+
+UInt {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::UInt;
+
+    return TYPE;
+}
+
+UInt8 {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::UInt8;
+
+    return TYPE;
+}
+
+UInt16 {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::UInt16;
+
+    return TYPE;
+}
+
+UInt32 {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::UInt32;
+
+    return TYPE;
+}
+
+UInt64 {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::UInt64;
+
+    return TYPE;
+}
+
+Float {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Float;
+
+    return TYPE;
+}
+
+Float80 {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Float80;
+
+    return TYPE;
+}
+
+Double {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Double;
+
+    return TYPE;
+}
+
+Bool {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Bool;
+
+    return TYPE;
+}
+
+String {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::String;
+
+    return TYPE;
+}
+
+Character {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Character;
+
+    return TYPE;
+}
 
         /* IDENTIFIERS */
 
 [A-Za-z_][A-Za-z_0-9]* { /* todo пока вот так по-простому */
-    printf("IDENTIFIER: %s\n", yytext);
+    yylval.token = makeValue(yytext);
+    return IDENTIFIER;
 }
 
         /* NUMERIC LITERALS */
