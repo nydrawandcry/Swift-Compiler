@@ -8,7 +8,12 @@
 #include <string.h>
 #include <string>
 #include <vector>
+#include <memory>
+#include <utility>
+#include <cstdarg>
+#include <stdexcept>
 #include "../utils/Buffer/Buffer.h"
+#include "parser.hpp"
 
 Buffer buffer;
 int commentDepth = 0;
@@ -26,12 +31,6 @@ struct StringContext {
     bool stringInvalid;
     int rawDelimiterLength;
     bool multilineFirstLine;
-};
-// перечисление типов операторов которые могут быть
-enum class OperatorType {
-    INFIX,
-    PREFIX,
-    POSTFIX
 };
 // структура для хранения оператора и инфы о нем
 struct Operator {
