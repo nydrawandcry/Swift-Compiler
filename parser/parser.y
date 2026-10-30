@@ -4,8 +4,27 @@
   #include <stdio.h>
   #include <stdlib.h>
   #include <iostream>
+  #include "utils/LexerSupport.h"
+
+  void yyerror(const char* message);
 
 %}
+
+%code requires {
+    #include "utils/TokenValue.h"
+
+    #define YYLTYPE_IS_TRIVIAL 1
+}
+
+%union {
+    TokenValue* token;
+}
+
+%locations
+
+%define api.location.type {SourceLocation}
+%define parse.error detailed
+%define parse.lac full
 
 
 /* -~-~-~-~-~-~-~-~-~-~- KEYWORDS -~-~-~-~-~-~-~-~-~-~- */
@@ -23,8 +42,8 @@
 %token DEFER DO CATCH THROW SWITCH CASE DEFAULT
 
     // EXPRESSIONS AND TYPES
-%token IDENTIFIER
-%token TYPE
+%token <token> IDENTIFIER
+%token <token> TYPE
 
     // LITERAL KEYWORDS
 %token TRUE FALSE NIL
@@ -43,23 +62,28 @@
 /* -~-~-~-~-~-~-~-~-~-~- LITERALS -~-~-~-~-~-~-~-~-~-~- */
 
     // NUMERIC LITERALS
-%token INTEGER_LITERAL
-%token FLOATING_POINT_LITERAL
-%token BOOLEAN_LITERAL
-%token NIL_LITERAL
+%token <token> INTEGER_LITERAL
+%token <token> FLOATING_POINT_LITERAL
+%token <token> BOOLEAN_LITERAL
+%token <token> NIL_LITERAL
 
     // STRINGS
-%token STRING_LITERAL
-%token RAW_STRING_LITERAL
-%token MULTILINE_STRING_LITERAL
-%token RAW_MULTILINE_STRING_LITERAL
+%token <token> STRING_LITERAL
+%token <token> RAW_STRING_LITERAL
+%token <token> MULTILINE_STRING_LITERAL
+%token <token> RAW_MULTILINE_STRING_LITERAL
+%token <token> INTERPOLATION_START
+%token <token> INTERPOLATION_END
 
     // OPERATORS
-%token PREFIX_OPERATOR
-%token INFIX_OPERATOR
-%token POSTFIX_OPERATOR
+%token <token> PREFIX_OPERATOR
+%token <token> INFIX_OPERATOR
+%token <token> POSTFIX_OPERATOR
 %token EQUAL
 %token NEWLINE
+
+    // Для конструкций, которые лексер поддерживает, а парсер еще нет
+%token <token> UNSUPPORTED_KEYWORD
 
 // я в крайнем недоразумении от сложившейся ситуации с операторами...
     /*
