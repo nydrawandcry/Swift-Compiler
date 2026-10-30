@@ -345,17 +345,11 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
             /* VALID FLOATS */
 
 {FLOAT_HEXADECIMAL} {
-    deleteUnderscores(yytext, digitBuffer);
-    doubleBuf = std::stod(digitBuffer);
-
-    printf("FLOATING_POINT_LITERAL (hexadecimal): %.15g\n", doubleBuf);
+    return readFloating(yytext, 16);
 }
 
 {FLOAT_DECIMAL} {
-    deleteUnderscores(yytext, digitBuffer);
-    doubleBuf = std::stod(digitBuffer);
-
-    printf("FLOATING_POINT_LITERAL (decimal): %.15g\n", doubleBuf);
+    return readFloating(yytext, 10);
 }
 
             /* FLOAT ERRORS */
@@ -385,28 +379,20 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
             /* VALID INTEGERS */
 
 {INT_BINARY} {
-    deleteUnderscores(yytext + 2, digitBuffer);
-    intBuf = std::stoi(digitBuffer, nullptr, 2);
-
-    printf("INTEGER_LITERAL (binary): %d\n", intBuf);}
+    return readInteger(yytext, 2, 2);
+}
 
 {INT_OCTAL} {
-    deleteUnderscores(yytext + 2, digitBuffer);
-    intBuf = std::stoi(digitBuffer, nullptr, 8);
-
-    printf("INTEGER_LITERAL (octal): %d\n", intBuf);}
+    return readInteger(yytext, 8, 2);
+}
 
 {INT_DECIMAL} {
-    deleteUnderscores(yytext, digitBuffer);
-    intBuf = std::stoi(digitBuffer, nullptr, 10);
-
-    printf("INTEGER_LITERAL (decimal): %d\n", intBuf);}
+    return readInteger(yytext, 10, 0);
+}
 
 {INT_HEXADECIMAL} {
-    deleteUnderscores(yytext + 2, digitBuffer);
-    intBuf = std::stoi(digitBuffer, nullptr, 16);
-
-    printf("INTEGER_LITERAL (hexadecimal): %d\n", intBuf);}
+    return readInteger(yytext, 16, 2);
+}
 
             /* UPPERCASE PREFIX ERRORS */
 
