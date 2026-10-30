@@ -1039,7 +1039,7 @@ Character {
     }
 }
 <COMMENT>"\n" {
-    printf("NEWLINE\n");
+    return NEWLINE;
 }
 <COMMENT>. {
     /* игнорирование символов в комментарии */
@@ -1081,7 +1081,7 @@ Character {
 
     if(yyleng == 1 && yytext[0] == '.')
     {
-        printf("DOT: .\n");
+        return '.';
     }
     else
     {
@@ -1105,28 +1105,28 @@ Character {
     );
 }
 
-"."    { printf("DOT: .\n"); }
-":"    { prevWhitespace = true; printf("COLON: :\n"); }
+"."   { return '.'; }
+":"   { prevWhitespace = true; return ':'; }
 
         /* PUNCTUATION */
 
-","   { prevWhitespace = true; printf("PUNCTUATION: ,\n"); }
+","   { prevWhitespace = true; return ','; }
 
-"("   { prevWhitespace = true; printf("PUNCTUATION: (\n"); }
-")"   { printf("PUNCTUATION: )\n"); }
+"("   { prevWhitespace = true; return '('; }
+")"   { return ')'; }
 
-"{"   { prevWhitespace = true; printf("PUNCTUATION: {\n"); }
-"}"   { printf("PUNCTUATION: }\n"); }
+"{"   { prevWhitespace = true; return '{'; }
+"}"   { return '}'; }
 
-"["   { prevWhitespace = true; printf("PUNCTUATION: [\n"); }
-"]"   { printf("PUNCTUATION: ]\n"); }
+"["   { prevWhitespace = true; return '['; }
+"]"   { return ']'; }
 
-";"   { prevWhitespace = true; printf("PUNCTUATION: ;\n"); }
+";"   { prevWhitespace = true; return ';'; }
 
-"@"   { printf("PUNCTUATION: @\n"); }
-"#"   { printf("PUNCTUATION: #\n"); }
+"@"   { return '@'; }
+"#"   { return '#'; }
 
-"`"   { printf("PUNCTUATION: `\n"); }
+"`"   { return '`'; }
 
         /* WHITESPACES */
 
@@ -1182,7 +1182,7 @@ Character {
 
 \n+ {
     prevWhitespace = true;
-    printf("NEWLINE\n");
+    return NEWLINE;
 }
 
 
