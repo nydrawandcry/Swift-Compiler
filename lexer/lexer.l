@@ -56,6 +56,36 @@ int intBuf = 0;
 float floatBuf = 0;
 double doubleBuf = 0;
 
+// ДЛЯ ПАРСЕРА И ИХ СВЯЗИ (я пока ничего не понимаю)
+static int lexerLine = 1;
+static int lexerColumn = 1;
+
+static bool afterCR = false;
+static bool matchAfterCR = false;
+
+static SourceLocation currentMatch{1, 1, 1, 1};
+//данные токена (хранение до завершения программы)
+static std::vector<std::unique_ptr<TokenValue>> tokenValues;
+//счетчик ошибок
+int lexerErrors = 0;
+
+// ФУНКЦИИ ДЛЯ ПАРСЕРА
+
+//
+void lexerError(const char* format, ...);
+//
+void advancePosition(const char* text, int length);
+//
+void recordMatch(const char* text, int length);
+//
+void rewindPosition(const char* text, int length);
+//создание данных токена
+TokenValue* makeValue(const std::string& text);
+//
+int finishInput();
+
+//остальные функции
+
 // функция для удаления нижнего подчеркивания
 void deleteUnderscores(const char* source, std::string& str);
 // функция для подсчета #
@@ -87,12 +117,20 @@ void printOperator(bool rightWhitespace, bool followedByDot = false);
 // для сохранения и сбрасывания флага перед каждым правилом (для определения типа оператора)
 #define YY_USER_ACTION                                      \
     do {                                                    \
+        recordMatch(yytext, yyleng);                        \
+        yylineno = lexerLine;                               \
         if (YY_START != COMMENT &&                          \
             YY_START != AFTER_OPERATOR) {                   \
             currentLeftWhitespace = prevWhitespace;         \
             prevWhitespace = false;                         \
         }                                                   \
     } while (false);
+
+#define KEEP_MATCHED(count) do {                            \
+    yyless(count);                                          \
+    rewindPosition(yytext, yyleng);                         \
+    yylineno = lexerLine;                                   \
+} while (false)
 %}
 
 %x STRING
@@ -886,7 +924,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 }
 
 "/*"{OPERATOR}? {
-    yyless(2);
+    KEEP_MATCHED(2);
     prevWhitespace = true;
     commentDepth = 1;
     yy_push_state(COMMENT);
@@ -917,7 +955,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     /* последовательность которая могла бы считаться оператором,
     но является зарезервированной под конец комментария. выдаем ошибку */
 "*/"{OPERATOR}? {
-    yyless(2);
+    KEEP_MATCHED(2);
     fprintf(stderr,
         "Lexer error at line %d: unexpected end of block comment\n",
         yylineno
@@ -936,7 +974,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
         if(opensComment || closesComment)
         {
-            yyless(i);
+            KEEP_MATCHED(i);
             break;
         }
     }
@@ -1005,7 +1043,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     /* найден newline после оператора */
     printOperator(true);
     yy_pop_state();
-    yyless(0);
+    KEEP_MATCHED(0);
 }
 
 <AFTER_OPERATOR>("//"|"/*") {
@@ -1013,7 +1051,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     printOperator(true);
 
     yy_pop_state();
-    yyless(0);
+    KEEP_MATCHED(0);
 }
 
 <AFTER_OPERATOR>. {
@@ -1030,7 +1068,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     printOperator(rightWhitespace, next == '.');
 
     yy_pop_state();
-    yyless(0);
+    KEEP_MATCHED(0);
 }
 
 <AFTER_OPERATOR><<EOF>> {
@@ -1064,6 +1102,101 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 %%
 
     /* FUNCTIONS */
+
+void lexerError(const char* format, ...) {
+    ++lexerErrors;
+
+    va_list args;
+    va_start(args, format);
+
+    std::vfprintf(stderr, format, args);
+
+    va_end(args);
+}
+
+void advancePosition(const char* text, int length) {
+    for (int i = 0; i < length; ++i) {
+        if (text[i] == '\r') {
+            ++lexerLine;
+            lexerColumn = 1;
+            afterCR = true;
+        }
+        else if (text[i] == '\n') {
+            if (!afterCR) {
+                ++lexerLine;
+            }
+
+            lexerColumn = 1;
+            afterCR = false;
+        }
+        else {
+            ++lexerColumn;
+            afterCR = false;
+        }
+    }
+}
+
+void recordMatch(const char* text, int length) {
+    currentMatch = {
+        lexerLine,
+        lexerColumn,
+        lexerLine,
+        lexerColumn
+    };
+
+    matchAfterCR = afterCR;
+
+    advancePosition(text, length);
+
+    currentMatch.last_line = lexerLine;
+    currentMatch.last_column = lexerColumn;
+
+    yylloc = currentMatch;
+
+    // у нового токена пока нет доп данных
+    yylval.token = nullptr;
+}
+
+void rewindPosition(const char* text, int length) {
+    lexerLine = currentMatch.first_line;
+    lexerColumn = currentMatch.first_column;
+
+    afterCR = matchAfterCR;
+
+    advancePosition(text, length);
+
+    currentMatch.last_line = lexerLine;
+    currentMatch.last_column = lexerColumn;
+
+    yylloc = currentMatch;
+}
+
+TokenValue* makeValue(const std::string& text) {
+    auto value = std::make_unique<TokenValue>();
+
+    value->text = text;
+
+    TokenValue* result = value.get();
+
+    tokenValues.push_back(std::move(value));
+
+    return result;
+}
+
+int finishInput() {
+    yylval.token = nullptr;
+
+    yylloc = {
+        lexerLine,
+        lexerColumn,
+        lexerLine,
+        lexerColumn
+    };
+
+    return 0;
+}
+
+    /* ОСТАЛЬНЫЕ ФУНКЦИИ */
 
 void deleteUnderscores(const char* source, std::string& str)
 {
