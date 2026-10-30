@@ -60,5 +60,7 @@ struct TokenValue {
 
     OperatorType operatorType = OperatorType::INFIX; //для токена - оператора
 
-    int numberBase = 10; //для чисел
+    unsigned long long integerValue = 0; //для long long и других
+    double floatingValue = 0.0; //для float
+    int numberBase = 10; //для целых чисел
 };
