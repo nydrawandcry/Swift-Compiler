@@ -28,7 +28,7 @@ BISON_TARGET(
         ${CMAKE_CURRENT_BINARY_DIR}/parser.hpp
 
         COMPILE_FLAGS
-        "-Wall -Wcounterexamples -v"
+        "-Wall -v"
 )
 
 ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
