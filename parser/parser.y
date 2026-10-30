@@ -306,6 +306,10 @@ type_identifier:
     | type_identifier '.' IDENTIFIER
 ;
 
+initializer:
+    EQUAL expression
+;
+
 // блок кода
 code_block:
     '{' statement_list_opt '}'
@@ -492,7 +496,7 @@ argument:
 
 void yyerror(const char* message) {
     ++parseErrors;
-    
+
     std::cerr
         << "Parser error at "
         << yylloc.first_line
