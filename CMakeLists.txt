@@ -7,15 +7,31 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(FLEX REQUIRED)
+find_package(BISON 3.7 REQUIRED)
+
 if(NOT FLEX_EXECUTABLE)
     message(FATAL_ERROR "Flex not found. Install Flex and try again.")
 endif ()
 
 FLEX_TARGET(
         Lexer
-        ${CMAKE_SOURCE_DIR}/lexer/lexer.l
-        ${CMAKE_BINARY_DIR}/lexer.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/lexer/lexer.l
+        ${CMAKE_CURRENT_BINARY_DIR}/lexer.cpp
 )
+
+BISON_TARGET(
+        Parser
+        ${CMAKE_CURRENT_SOURCE_DIR}/parser/parser.y
+        ${CMAKE_CURRENT_BINARY_DIR}/parser.cpp
+
+        DEFINES_FILE
+        ${CMAKE_CURRENT_BINARY_DIR}/parser.hpp
+
+        COMPILE_FLAGS
+        "-Wall -Wcounterexamples -v"
+)
+
+ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
 
 add_executable(
         Swift_Compiler
@@ -23,4 +39,15 @@ add_executable(
         ${FLEX_Lexer_OUTPUTS}
         utils/Buffer/Buffer.cpp
         utils/Buffer/Buffer.h
+
+        ${BISON_Parser_OUTPUTS}
+        ${FLEX_Lexer_OUTPUTS}
+)
+
+target_include_directories(
+        Swift_Compiler
+        PRIVATE
+
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_BINARY_DIR}
 )
