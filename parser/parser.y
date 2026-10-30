@@ -190,7 +190,7 @@ variable_declaration:
 
 // пусто быть не может: либо указывается тип, либо выражение, либо и то и то
 variable_tail:
-    | type_annotation
+      type_annotation
     | EQUAL expression
     | type_annotation EQUAL expression
 ;
