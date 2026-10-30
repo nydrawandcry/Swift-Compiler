@@ -7,12 +7,15 @@
 
   int yylex();
   void yyerror(const char* message);
+  int parseErrors = 0;
 
 %}
 
 %code requires {
     #include "utils/TokenValue.h"
 
+    #define YYLTYPE SourceLocation
+    #define YYLTYPE_IS_DECLARED 1
     #define YYLTYPE_IS_TRIVIAL 1
 }
 
@@ -22,8 +25,7 @@
 
 %locations
 
-%define api.location.type {SourceLocation}
-%define parse.error detailed
+%error-verbose
 %define parse.lac full
 
 
@@ -489,6 +491,8 @@ argument:
 //а здесь будет реализация всех функций которые нужны будут в парсере
 
 void yyerror(const char* message) {
+    ++parseErrors;
+    
     std::cerr
         << "Parser error at "
         << yylloc.first_line
