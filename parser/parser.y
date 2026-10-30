@@ -432,3 +432,14 @@ argument:
 %%
 
 //а здесь будет реализация всех функций которые нужны будут в парсере
+
+void yyerror(const char* message) {
+    std::cerr
+        << "Parser error at "
+        << yylloc.first_line
+        << ':'
+        << yylloc.first_column
+        << ": "
+        << message
+        << '\n';
+}
