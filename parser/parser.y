@@ -478,222 +478,67 @@ catch_clause:
 //выражение, используемое внешней конструкцией:
 //объявлением, условием, ретурном и тд
 expression_root:
-    expression {
-        expressionAST.roots.push_back($1);
-    }
+    expression
 ;
 
-//если инфиксных операций нет, возвращаем готовый узел
-//если есть - возвращаем SequenceExpr
 expression:
-      prefix_expression {
-          $$ = $1;
-      }
-    | sequence_expression {
-          $$ = $1;
-      }
+      prefix_expression
+    | sequence_expression
 ;
 
-// плоская последовательность без учёта приоритетов
 sequence_expression:
-      prefix_expression infix_operator prefix_expression {
-          $$ = expressionAST.sequence(
-              $1,
-              $2,
-              $3,
-              @$
-          );
-      }
-    | sequence_expression infix_operator prefix_expression {
-          $$ = expressionAST.appendSequence(
-              $1,
-              $2,
-              $3,
-              @$
-          );
-      }
+      prefix_expression infix_operator prefix_expression
+    | sequence_expression infix_operator prefix_expression
 ;
 
 infix_operator:
-      INFIX_OPERATOR {
-          $$ = expressionAST.make(
-              ast::ExprKind::InfixOperator,
-              @1,
-              $1->text
-          );
-      }
-    | EQUAL {
-          $$ = expressionAST.make(
-              ast::ExprKind::InfixOperator,
-              @1,
-              "="
-          );
-      }
+      INFIX_OPERATOR
+    | EQUAL
 ;
 
-//префикс применяется к готовому постфиксному выражению
 prefix_expression:
-      postfix_expression {
-          $$ = $1;
-      }
-    | PREFIX_OPERATOR postfix_expression {
-          $$ = expressionAST.unary(
-              ast::ExprKind::Prefix,
-              $1->text,
-              $2,
-              @$
-          );
-      }
+      postfix_expression
+    | PREFIX_OPERATOR postfix_expression
 ;
 
-//каждый след. постфикс оборачивает выражение слева
 postfix_expression:
-      primary_expression {
-          $$ = $1;
-      }
-    | postfix_expression POSTFIX_OPERATOR {
-          $$ = expressionAST.unary(
-              ast::ExprKind::Postfix,
-              $2->text,
-              $1,
-              @$
-          );
-      }
-    | postfix_expression '(' argument_list_opt ')' {
-          $$ = expressionAST.call(
-              $1,
-              $3,
-              @$
-          );
-      }
+      primary_expression
+    | postfix_expression POSTFIX_OPERATOR
+    | postfix_expression '(' argument_list_opt ')'
 ;
 
 primary_expression:
-      literal {
-          $$ = $1;
-      }
-    | IDENTIFIER {
-          $$ = expressionAST.make(
-              ast::ExprKind::Identifier,
-              @1,
-              $1->text
-          );
-      }
-    | TYPE {
-          $$ = expressionAST.make(
-              ast::ExprKind::Identifier,
-              @1,
-              $1->text
-          );
-      }
-    | SELF {
-          $$ = expressionAST.make(
-              ast::ExprKind::Identifier,
-              @1,
-              "self"
-          );
-      }
-    | '(' expression ')' {
-          $$ = expressionAST.unary(
-              ast::ExprKind::Group,
-              "",
-              $2,
-              @$
-          );
-      }
+      literal
+    | IDENTIFIER
+    | TYPE
+    | SELF
+    | '(' expression ')'
 ;
 
 literal:
-      INTEGER_LITERAL {
-          $$ = expressionAST.literal(
-              ast::ExprKind::IntegerLiteral, $1, @1
-          );
-      }
-    | FLOATING_POINT_LITERAL {
-          $$ = expressionAST.literal(
-              ast::ExprKind::FloatingLiteral, $1, @1
-          );
-      }
-    | BOOLEAN_LITERAL {
-          $$ = expressionAST.literal(
-              ast::ExprKind::BooleanLiteral, $1, @1
-          );
-      }
-    | NIL_LITERAL {
-          $$ = expressionAST.literal(
-              ast::ExprKind::NilLiteral, $1, @1
-          );
-      }
-    | STRING_LITERAL {
-          $$ = expressionAST.literal(
-              ast::ExprKind::StringLiteral, $1, @1
-          );
-      }
-    | RAW_STRING_LITERAL {
-          $$ = expressionAST.literal(
-              ast::ExprKind::RawStringLiteral, $1, @1
-          );
-      }
-    | MULTILINE_STRING_LITERAL {
-          $$ = expressionAST.literal(
-              ast::ExprKind::MultilineStringLiteral, $1, @1
-          );
-      }
-    | RAW_MULTILINE_STRING_LITERAL {
-          $$ = expressionAST.literal(
-              ast::ExprKind::RawMultilineStringLiteral, $1, @1
-          );
-      }
+      INTEGER_LITERAL
+    | FLOATING_POINT_LITERAL
+    | BOOLEAN_LITERAL
+    | NIL_LITERAL
+    | STRING_LITERAL
+    | RAW_STRING_LITERAL
+    | MULTILINE_STRING_LITERAL
+    | RAW_MULTILINE_STRING_LITERAL
 ;
 
-//свой узел получает даже пустой список
 argument_list_opt:
-      /* empty */ {
-          $$ = expressionAST.make(
-              ast::ExprKind::ArgumentList,
-              @$
-          );
-      }
-    | argument_list {
-          $$ = $1;
-      }
+      /* empty */
+    | argument_list
 ;
 
 argument_list:
-      argument {
-          $$ = expressionAST.make(
-              ast::ExprKind::ArgumentList,
-              @$
-          );
-
-          $$->children.push_back($1);
-      }
-    | argument_list ',' argument {
-          $$ = expressionAST.appendArgument(
-              $1,
-              $3,
-              @$
-          );
-      }
+      argument
+    | argument_list ',' argument
 ;
 
 argument:
-      expression {
-          $$ = expressionAST.unary(
-              ast::ExprKind::Argument,
-              "",
-              $1,
-              @$
-          );
-      }
-    | IDENTIFIER ':' expression {
-          $$ = expressionAST.unary(
-              ast::ExprKind::Argument,
-              $1->text,
-              $3,
-              @$
-          );
-      }
+      expression
+    | IDENTIFIER ':' expression
 ;
 
 %%
