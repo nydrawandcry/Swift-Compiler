@@ -8,7 +8,12 @@
 #include <string.h>
 #include <string>
 #include <vector>
+#include <memory>
+#include <utility>
+#include <cstdarg>
+#include <stdexcept>
 #include "../utils/Buffer/Buffer.h"
+#include "parser.hpp"
 
 Buffer buffer;
 int commentDepth = 0;
@@ -26,12 +31,6 @@ struct StringContext {
     bool stringInvalid;
     int rawDelimiterLength;
     bool multilineFirstLine;
-};
-// перечисление типов операторов которые могут быть
-enum class OperatorType {
-    INFIX,
-    PREFIX,
-    POSTFIX
 };
 // структура для хранения оператора и инфы о нем
 struct Operator {
@@ -56,6 +55,36 @@ std::string digitBuffer = "";
 int intBuf = 0;
 float floatBuf = 0;
 double doubleBuf = 0;
+
+// ДЛЯ ПАРСЕРА И ИХ СВЯЗИ (я пока ничего не понимаю)
+static int lexerLine = 1;
+static int lexerColumn = 1;
+
+static bool afterCR = false;
+static bool matchAfterCR = false;
+
+static SourceLocation currentMatch{1, 1, 1, 1};
+//данные токена (хранение до завершения программы)
+static std::vector<std::unique_ptr<TokenValue>> tokenValues;
+//счетчик ошибок
+int lexerErrors = 0;
+
+// ФУНКЦИИ ДЛЯ ПАРСЕРА
+
+//
+void lexerError(const char* format, ...);
+//
+void advancePosition(const char* text, int length);
+//
+void recordMatch(const char* text, int length);
+//
+void rewindPosition(const char* text, int length);
+//создание данных токена
+TokenValue* makeValue(const std::string& text);
+//
+int finishInput();
+
+//остальные функции
 
 // функция для удаления нижнего подчеркивания
 void deleteUnderscores(const char* source, std::string& str);
@@ -84,16 +113,28 @@ void endString();
 void clearStringContexts();
 // напечатать оператор
 void printOperator(bool rightWhitespace, bool followedByDot = false);
+//чтение целых чисел (для парсера)
+int readInteger(const char* text, int base, int skip);
+//чтение чисел с плавающей точкой (для парсера)
+int readFloating(const char* text, int base);
 
 // для сохранения и сбрасывания флага перед каждым правилом (для определения типа оператора)
 #define YY_USER_ACTION                                      \
     do {                                                    \
+        recordMatch(yytext, yyleng);                        \
+        yylineno = lexerLine;                               \
         if (YY_START != COMMENT &&                          \
             YY_START != AFTER_OPERATOR) {                   \
             currentLeftWhitespace = prevWhitespace;         \
             prevWhitespace = false;                         \
         }                                                   \
     } while (false);
+
+#define KEEP_MATCHED(count) do {                            \
+    yyless(count);                                          \
+    rewindPosition(yytext, yyleng);                         \
+    yylineno = lexerLine;                                   \
+} while (false)
 %}
 
 %x STRING
@@ -144,77 +185,91 @@ FLOAT_HEXADECIMAL 0x{HEX_DIGITS}(\.{HEX_DIGITS})?{HEX_EXPONENT}
 
             /* DECLARATIONS */
 
-"associatedtype"    { printf("KEYWORD: associatedtype\n"); }
+"associatedtype"    { return ASSOCIATEDTYPE; }
 "borrowing"         { printf("KEYWORD: borrowing\n"); }
-"class"             { printf("KEYWORD: class\n"); }
+"class"             { return CLASS; }
 "consuming"         { printf("KEYWORD: consuming\n"); }
-"deinit"            { printf("KEYWORD: deinit\n"); }
-"enum"              { printf("KEYWORD: enum\n"); }
-"extension"         { printf("KEYWORD: extension\n"); }
-"fileprivate"       { printf("KEYWORD: fileprivate\n"); }
-"func"              { printf("KEYWORD: func\n"); }
-"import"            { printf("KEYWORD: import\n"); }
-"init"              { printf("KEYWORD: init\n"); }
+"deinit"            { return DEINIT; }
+"enum"              { return ENUM; }
+"extension"         { return EXTENSION; }
+"fileprivate"       { return FILEPRIVATE; }
+"func"              { return FUNC; }
+"import"            { return IMPORT; }
+"init"              { return INIT; }
 "inout"             { printf("KEYWORD: inout\n"); }
-"internal"          { printf("KEYWORD: internal\n"); }
-"let"               { printf("KEYWORD: let\n"); }
+"internal"          { return INTERNAL; }
+"let"               { return LET; }
 "nonisolated"       { printf("KEYWORD: nonisolated\n"); }
-"open"              { printf("KEYWORD: open\n"); }
+"open"              { return OPEN; }
 "operator"          { printf("KEYWORD: operator\n"); }
 "precedencegroup"   { printf("KEYWORD: precedencegroup\n"); }
-"private"           { printf("KEYWORD: private\n"); }
-"protocol"          { printf("KEYWORD: protocol\n"); }
-"public"            { printf("KEYWORD: public\n"); }
-"rethrows"          { printf("KEYWORD: rethrows\n"); }
-"static"            { printf("KEYWORD: static\n"); }
-"struct"            { printf("KEYWORD: struct\n"); }
-"subscript"         { printf("KEYWORD: subscript\n"); }
-"typealias"         { printf("KEYWORD: typealias\n"); }
-"var"               { printf("KEYWORD: var\n"); }
+"private"           { return PRIVATE; }
+"protocol"          { return PROTOCOL; }
+"public"            { return PUBLIC; }
+"rethrows"          { return RETHROWS; }
+"static"            { return STATIC; }
+"struct"            { return STRUCT; }
+"subscript"         { return SUBSCRIPT; }
+"typealias"         { return TYPEALIAS; }
+"var"               { return VAR; }
 
             /* STATEMENTS */
 
-"break"             { printf("KEYWORD: break\n"); }
-"case"              { printf("KEYWORD: case\n"); }
-"catch"             { printf("KEYWORD: catch\n"); }
-"continue"          { printf("KEYWORD: continue\n"); }
-"default"           { printf("KEYWORD: default\n"); }
-"defer"             { printf("KEYWORD: defer\n"); }
-"do"                { printf("KEYWORD: do\n"); }
-"else"              { printf("KEYWORD: else\n"); }
-"fallthrough"       { printf("KEYWORD: fallthrough\n"); }
-"for"               { printf("KEYWORD: for\n"); }
-"guard"             { printf("KEYWORD: guard\n"); }
-"if"                { printf("KEYWORD: if\n"); }
-"in"                { printf("KEYWORD: in\n"); }
-"repeat"            { printf("KEYWORD: repeat\n"); }
-"return"            { printf("KEYWORD: return\n"); }
-"switch"            { printf("KEYWORD: switch\n"); }
-"throw"             { printf("KEYWORD: throw\n"); }
+"break"             { return BREAK; }
+"case"              { return CASE; }
+"catch"             { return CATCH; }
+"continue"          { return CONTINUE; }
+"default"           { return DEFAULT; }
+"defer"             { return DEFER; }
+"do"                { return DO; }
+"else"              { return ELSE; }
+"fallthrough"       { return FALLTHROUGH; }
+"for"               { return FOR; }
+"guard"             { return GUARD; }
+"if"                { return IF; }
+"in"                { return IN; }
+"repeat"            { return REPEAT; }
+"return"            { return RETURN; }
+"switch"            { return SWITCH; }
+"throw"             { return THROW; }
 "where"             { printf("KEYWORD: where\n"); }
-"while"             { printf("KEYWORD: while\n"); }
+"while"             { return WHILE; }
 
             /* EXPRESSIONS AND TYPES */
 
-"Any"               { printf("KEYWORD: Any\n"); }
-"as"                { printf("KEYWORD: as\n"); }
-"await"             { printf("KEYWORD: await\n"); }
-"is"                { printf("KEYWORD: is\n"); }
-"self"              { printf("KEYWORD: self\n"); }
-"Self"              { printf("KEYWORD: Self\n"); }
-"super"             { printf("KEYWORD: super\n"); }
-"throws"            { printf("KEYWORD: throws\n"); }
-"try"               { printf("KEYWORD: try\n"); }
+"Any"               { return ANY; }
+"as"                { return AS; }
+"await"             { return AWAIT; }
+"is"                { return IS; }
+"self"              { return SELF; }
+"Self"              { return SELF_TYPE; /*разница с обычным self!*/ }
+"super"             { return SUPER; }
+"throws"            { return THROWS; }
+"try"               { return TRY; }
 
             /* LITERAL KEYWORDS */
 
-"true"              { printf("BOOLEAN_LITERAL: true\n"); }
-"false"             { printf("BOOLEAN_LITERAL: false\n"); }
-"nil"               { printf("NIL_LITERAL: nil\n"); }
+"true" {
+    yylval.token = makeValue(yytext);
+
+    return BOOLEAN_LITERAL; //в парсере используется такой литерал
+}
+"false" {
+    yylval.token = makeValue(yytext);
+
+    return BOOLEAN_LITERAL;
+}
+"nil" {
+    yylval.token = makeValue(yytext);
+
+    return NIL_LITERAL; //аналогично ( TODO доработать)
+}
 
             /* KEYWORDS USED IN PATTERNS: _ */
 
-_                   { printf("KEYWORD: used in patterns _\n"); }
+_ {
+    return '_';
+}
 
             /* KEYWORDS THAT BEGIN WITH A NUMBER SIGN (#) */
 
@@ -245,58 +300,154 @@ _                   { printf("KEYWORD: used in patterns _\n"); }
                         парсер разберется */
 
 "associativity"      { printf("CONTEXTUAL_KEYWORD: associativity\n"); }
-"async"              { printf("CONTEXTUAL_KEYWORD: async\n"); }
+"async"              { return ASYNC; }
 "convenience"        { printf("CONTEXTUAL_KEYWORD: convenience\n"); }
-"didSet"             { printf("CONTEXTUAL_KEYWORD: didSet\n"); }
+"didSet"             { return DIDSET; }
 "dynamic"            { printf("CONTEXTUAL_KEYWORD: dynamic\n"); }
-"final"              { printf("CONTEXTUAL_KEYWORD: final\n"); }
-"get"                { printf("CONTEXTUAL_KEYWORD: get\n"); }
+"final"              { return FINAL; }
+"get"                { return GET; }
 "indirect"           { printf("CONTEXTUAL_KEYWORD: indirect\n"); }
 "infix"              { printf("CONTEXTUAL_KEYWORD: infix\n"); }
 "lazy"               { printf("CONTEXTUAL_KEYWORD: lazy\n"); }
 "left"               { printf("CONTEXTUAL_KEYWORD: left\n"); }
-"mutating"           { printf("CONTEXTUAL_KEYWORD: mutating\n"); }
+"mutating"           { return MUTATING; }
 "none"               { printf("CONTEXTUAL_KEYWORD: none\n"); }
-"nonmutating"        { printf("CONTEXTUAL_KEYWORD: nonmutating\n"); }
+"nonmutating"        { return NONMUTATING; }
 "optional"           { printf("CONTEXTUAL_KEYWORD: optional\n"); }
-"override"           { printf("CONTEXTUAL_KEYWORD: override\n"); }
+"override"           { return OVERRIDE; }
 "package"            { printf("CONTEXTUAL_KEYWORD: package\n"); }
 "postfix"            { printf("CONTEXTUAL_KEYWORD: postfix\n"); }
 "precedence"         { printf("CONTEXTUAL_KEYWORD: precedence\n"); }
 "prefix"             { printf("CONTEXTUAL_KEYWORD: prefix\n"); }
 "Protocol"           { printf("CONTEXTUAL_KEYWORD: Protocol\n"); }
-"required"           { printf("CONTEXTUAL_KEYWORD: required\n"); }
+"required"           { return REQUIRED; }
 "right"              { printf("CONTEXTUAL_KEYWORD: right\n"); }
-"set"                { printf("CONTEXTUAL_KEYWORD: set\n"); }
+"set"                { return SET; }
 "some"               { printf("CONTEXTUAL_KEYWORD: some\n"); }
 "Type"               { printf("CONTEXTUAL_KEYWORD: Type\n"); }
 "unowned"            { printf("CONTEXTUAL_KEYWORD: unowned\n"); }
 "weak"               { printf("CONTEXTUAL_KEYWORD: weak\n"); }
-"willSet"            { printf("CONTEXTUAL_KEYWORD: willSet\n"); }
+"willSet"            { return WILLSET; }
 
         /* TYPES */
 
-Int                  { printf("TYPE (Int): %s\n", yytext); }
-Int8                 { printf("TYPE (Int8): %s\n", yytext); }
-Int16                { printf("TYPE (Int16): %s\n", yytext); }
-Int32                { printf("TYPE (Int32): %s\n", yytext); }
-Int64                { printf("TYPE (Int64): %s\n", yytext); }
-UInt                 { printf("TYPE (UInt): %s\n", yytext); }
-UInt8                { printf("TYPE (UInt8): %s\n", yytext); }
-UInt16               { printf("TYPE (UInt16): %s\n", yytext); }
-UInt32               { printf("TYPE (UInt32): %s\n", yytext); }
-UInt64               { printf("TYPE (UInt64): %s\n", yytext); }
-Float                { printf("TYPE (Float): %s\n", yytext); }
-Float80              { printf("TYPE (Float80): %s\n", yytext); }
-Double               { printf("TYPE (Double): %s\n", yytext); }
-Bool                 { printf("TYPE (Bool): %s\n", yytext); }
-String               { printf("TYPE (String): %s\n", yytext); }
-Character            { printf("TYPE (Character): %s\n", yytext); }
+Int {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Int;
+
+    return TYPE;
+}
+
+Int8 {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Int8;
+
+    return TYPE;
+}
+
+Int16 {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Int16;
+
+    return TYPE;
+}
+
+Int32 {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Int32;
+
+    return TYPE;
+}
+
+Int64 {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Int64;
+
+    return TYPE;
+}
+
+UInt {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::UInt;
+
+    return TYPE;
+}
+
+UInt8 {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::UInt8;
+
+    return TYPE;
+}
+
+UInt16 {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::UInt16;
+
+    return TYPE;
+}
+
+UInt32 {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::UInt32;
+
+    return TYPE;
+}
+
+UInt64 {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::UInt64;
+
+    return TYPE;
+}
+
+Float {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Float;
+
+    return TYPE;
+}
+
+Float80 {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Float80;
+
+    return TYPE;
+}
+
+Double {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Double;
+
+    return TYPE;
+}
+
+Bool {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Bool;
+
+    return TYPE;
+}
+
+String {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::String;
+
+    return TYPE;
+}
+
+Character {
+    yylval.token = makeValue(yytext);
+    yylval.token->dataType = DataType::Character;
+
+    return TYPE;
+}
 
         /* IDENTIFIERS */
 
 [A-Za-z_][A-Za-z_0-9]* { /* todo пока вот так по-простому */
-    printf("IDENTIFIER: %s\n", yytext);
+    yylval.token = makeValue(yytext);
+    return IDENTIFIER;
 }
 
         /* NUMERIC LITERALS */
@@ -304,17 +455,11 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
             /* VALID FLOATS */
 
 {FLOAT_HEXADECIMAL} {
-    deleteUnderscores(yytext, digitBuffer);
-    doubleBuf = std::stod(digitBuffer);
-
-    printf("FLOATING_POINT_LITERAL (hexadecimal): %.15g\n", doubleBuf);
+    return readFloating(yytext, 16);
 }
 
 {FLOAT_DECIMAL} {
-    deleteUnderscores(yytext, digitBuffer);
-    doubleBuf = std::stod(digitBuffer);
-
-    printf("FLOATING_POINT_LITERAL (decimal): %.15g\n", doubleBuf);
+    return readFloating(yytext, 10);
 }
 
             /* FLOAT ERRORS */
@@ -344,28 +489,20 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
             /* VALID INTEGERS */
 
 {INT_BINARY} {
-    deleteUnderscores(yytext + 2, digitBuffer);
-    intBuf = std::stoi(digitBuffer, nullptr, 2);
-
-    printf("INTEGER_LITERAL (binary): %d\n", intBuf);}
+    return readInteger(yytext, 2, 2);
+}
 
 {INT_OCTAL} {
-    deleteUnderscores(yytext + 2, digitBuffer);
-    intBuf = std::stoi(digitBuffer, nullptr, 8);
-
-    printf("INTEGER_LITERAL (octal): %d\n", intBuf);}
+    return readInteger(yytext, 8, 2);
+}
 
 {INT_DECIMAL} {
-    deleteUnderscores(yytext, digitBuffer);
-    intBuf = std::stoi(digitBuffer, nullptr, 10);
-
-    printf("INTEGER_LITERAL (decimal): %d\n", intBuf);}
+    return readInteger(yytext, 10, 0);
+}
 
 {INT_HEXADECIMAL} {
-    deleteUnderscores(yytext + 2, digitBuffer);
-    intBuf = std::stoi(digitBuffer, nullptr, 16);
-
-    printf("INTEGER_LITERAL (hexadecimal): %d\n", intBuf);}
+    return readInteger(yytext, 16, 2);
+}
 
             /* UPPERCASE PREFIX ERRORS */
 
@@ -887,7 +1024,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 }
 
 "/*"{OPERATOR}? {
-    yyless(2);
+    KEEP_MATCHED(2);
     prevWhitespace = true;
     commentDepth = 1;
     yy_push_state(COMMENT);
@@ -918,7 +1055,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     /* последовательность которая могла бы считаться оператором,
     но является зарезервированной под конец комментария. выдаем ошибку */
 "*/"{OPERATOR}? {
-    yyless(2);
+    KEEP_MATCHED(2);
     fprintf(stderr,
         "Lexer error at line %d: unexpected end of block comment\n",
         yylineno
@@ -937,7 +1074,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 
         if(opensComment || closesComment)
         {
-            yyless(i);
+            KEEP_MATCHED(i);
             break;
         }
     }
@@ -1006,7 +1143,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     /* найден newline после оператора */
     printOperator(true);
     yy_pop_state();
-    yyless(0);
+    KEEP_MATCHED(0);
 }
 
 <AFTER_OPERATOR>("//"|"/*") {
@@ -1014,7 +1151,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     printOperator(true);
 
     yy_pop_state();
-    yyless(0);
+    KEEP_MATCHED(0);
 }
 
 <AFTER_OPERATOR>. {
@@ -1031,7 +1168,7 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
     printOperator(rightWhitespace, next == '.');
 
     yy_pop_state();
-    yyless(0);
+    KEEP_MATCHED(0);
 }
 
 <AFTER_OPERATOR><<EOF>> {
@@ -1065,6 +1202,101 @@ Character            { printf("TYPE (Character): %s\n", yytext); }
 %%
 
     /* FUNCTIONS */
+
+void lexerError(const char* format, ...) {
+    ++lexerErrors;
+
+    va_list args;
+    va_start(args, format);
+
+    std::vfprintf(stderr, format, args);
+
+    va_end(args);
+}
+
+void advancePosition(const char* text, int length) {
+    for (int i = 0; i < length; ++i) {
+        if (text[i] == '\r') {
+            ++lexerLine;
+            lexerColumn = 1;
+            afterCR = true;
+        }
+        else if (text[i] == '\n') {
+            if (!afterCR) {
+                ++lexerLine;
+            }
+
+            lexerColumn = 1;
+            afterCR = false;
+        }
+        else {
+            ++lexerColumn;
+            afterCR = false;
+        }
+    }
+}
+
+void recordMatch(const char* text, int length) {
+    currentMatch = {
+        lexerLine,
+        lexerColumn,
+        lexerLine,
+        lexerColumn
+    };
+
+    matchAfterCR = afterCR;
+
+    advancePosition(text, length);
+
+    currentMatch.last_line = lexerLine;
+    currentMatch.last_column = lexerColumn;
+
+    yylloc = currentMatch;
+
+    // у нового токена пока нет доп данных
+    yylval.token = nullptr;
+}
+
+void rewindPosition(const char* text, int length) {
+    lexerLine = currentMatch.first_line;
+    lexerColumn = currentMatch.first_column;
+
+    afterCR = matchAfterCR;
+
+    advancePosition(text, length);
+
+    currentMatch.last_line = lexerLine;
+    currentMatch.last_column = lexerColumn;
+
+    yylloc = currentMatch;
+}
+
+TokenValue* makeValue(const std::string& text) {
+    auto value = std::make_unique<TokenValue>();
+
+    value->text = text;
+
+    TokenValue* result = value.get();
+
+    tokenValues.push_back(std::move(value));
+
+    return result;
+}
+
+int finishInput() {
+    yylval.token = nullptr;
+
+    yylloc = {
+        lexerLine,
+        lexerColumn,
+        lexerLine,
+        lexerColumn
+    };
+
+    return 0;
+}
+
+    /* ОСТАЛЬНЫЕ ФУНКЦИИ */
 
 void deleteUnderscores(const char* source, std::string& str)
 {
@@ -1328,4 +1560,71 @@ void printOperator(bool rightWhitespace, bool followedByDot)
     printf("%s: %s\n", tokenName, currentOperator.str.c_str());
 
     currentOperator.str.clear();
+}
+
+int readInteger(const char* text, int base, int skip) {
+    std::string digits;
+
+    deleteUnderscores(text + skip, digits);
+
+    try {
+        unsigned long long value =
+            std::stoull(digits, nullptr, base);
+
+        yylval.token = makeValue(text);
+
+        yylval.token->integerValue = value;
+        yylval.token->numberBase = base;
+
+        return INTEGER_LITERAL;
+    }
+    catch (const std::invalid_argument&) {
+        lexerError(
+            "Lexer error at line %d: invalid integer '%s'\n",
+            currentMatch.first_line,
+            text
+        );
+    }
+    catch (const std::out_of_range&) {
+        lexerError(
+            "Lexer error at line %d: integer out of range '%s'\n",
+            currentMatch.first_line,
+            text
+        );
+    }
+
+    return LEX_ERROR;
+}
+
+int readFloating(const char* text, int base) {
+    std::string digits;
+
+    deleteUnderscores(text, digits);
+
+    try {
+        double value = std::stod(digits);
+
+        yylval.token = makeValue(text);
+
+        yylval.token->floatingValue = value;
+        yylval.token->numberBase = base;
+
+        return FLOATING_POINT_LITERAL;
+    }
+    catch (const std::invalid_argument&) {
+        lexerError(
+            "Lexer error at line %d: invalid float '%s'\n",
+            currentMatch.first_line,
+            text
+        );
+    }
+    catch (const std::out_of_range&) {
+        lexerError(
+            "Lexer error at line %d: float out of range '%s'\n",
+            currentMatch.first_line,
+            text
+        );
+    }
+
+    return LEX_ERROR;
 }
