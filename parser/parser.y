@@ -83,7 +83,9 @@
 %token NEWLINE
 
     // Для конструкций, которые лексер поддерживает, а парсер еще нет
+//пока не используется
 %token <token> UNSUPPORTED_KEYWORD
+%token LEX_ERROR
 
 // я в крайнем недоразумении от сложившейся ситуации с операторами...
     /*
@@ -351,8 +353,8 @@ condition_list:
 // скобки круглые опциональные (есть в експрешн)
 condition:
       expression
-    | availability_condition
-    | case_condition
+//    | availability_condition убрала это, тк оно еще не реализовано и вылазиет ошибка
+//    | case_condition
     | optional_binding_condition
 ;
 
@@ -375,10 +377,10 @@ optional_binding_condition:
 
 // проверка на соответствие с образцом
 // (что то типа аналога `==`)
-case_condition:
+//case_condition:
     /* todo тут я так понимаю надо какие то паттерны реализовывать (добавить правило для них и сюда втулить) */
     /* https://docs.swift.org/latest/documentation/the-swift-programming-language/patterns/ */
-;
+//;
 
 // todo availability_condition
 // проверка доступности апи для определенной платформы (не знаю может и не надо, у нас вроде лексер не распознает такие слова)
