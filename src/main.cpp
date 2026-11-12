@@ -1,7 +1,10 @@
 #include <stdio.h>
 
 extern FILE *yyin;
-extern int yylex(void);
+extern int yyparse(void);
+
+extern int lexerErrors;
+extern int parseErrors;
 
 int main(int argc, char *argv[])
 {
@@ -19,8 +22,14 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    yylex();
+    int parseResult = yyparse();
 
     fclose(yyin);
+
+    if (parseResult != 0 || parseErrors != 0 || lexerErrors != 0)
+    {
+        return 1;
+    }
+
     return 0;
 }
