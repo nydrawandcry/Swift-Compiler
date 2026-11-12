@@ -55,7 +55,7 @@
     // LITERAL KEYWORDS
 %token TRUE FALSE NIL
 %token SELF SUPER
-%token AS IS AWAIT TRY
+%token AWAIT TRY
 %token ANY SELF_TYPE
 
     // KEYWORDS RESERVED IN PARTICULAR CONTEXTS
@@ -83,10 +83,68 @@
 %token <token> INTERPOLATION_END
 
     // OPERATORS
-%token <token> PREFIX_OPERATOR
-%token <token> INFIX_OPERATOR
-%token <token> POSTFIX_OPERATOR
-%token EQUAL
+
+    // AssignmentPrecedence: right associative
+%right <token> EQUAL INFIX_MULT_ASSIGN INFIX_OVERFLOW_MULT_ASSIGN
+%right <token> INFIX_DIV_ASSIGN INFIX_MOD_ASSIGN INFIX_PLUS_ASSIGN
+%right <token> INFIX_OVERFLOW_PLUS_ASSIGN INFIX_MINUS_ASSIGN INFIX_OVERFLOW_MINUS_ASSIGN
+%right <token> INFIX_LSHIFT_ASSIGN INFIX_OVERFLOW_LSHIFT_ASSIGN
+%right <token> INFIX_RSHIFT_ASSIGN INFIX_OVERFLOW_RSHIFT_ASSIGN
+%right <token> INFIX_BITWISE_AND_ASSIGN INFIX_BITWISE_XOR_ASSIGN INFIX_BITWISE_OR_ASSIGN
+%right <token> INFIX_POINTWISE_BITWISE_AND_ASSIGN INFIX_POINTWISE_BITWISE_OR_ASSIGN
+%right <token> INFIX_POINTWISE_BITWISE_XOR_ASSIGN
+
+    // FunctionArrowPrecedence: right associative
+%right <token> ARROW
+
+    // TernaryPrecedence: right associative
+%right <token> INFIX_QUESTION
+
+    // DefaultPrecedence: no associativity
+%nonassoc <token> INFIX_CUSTOM
+
+    // LogicalDisjunctionPrecedence: left associative
+%left <token> INFIX_LOGICAL_OR INFIX_POINTWISE_BITWISE_OR INFIX_POINTWISE_BITWISE_XOR
+
+    // LogicalConjunctionPrecedence: left associative
+%left <token> INFIX_LOGICAL_AND INFIX_POINTWISE_BITWISE_AND
+
+    // ComparisonPrecedence: non-associative
+%nonassoc <token> INFIX_LESS INFIX_LESS_EQUAL INFIX_GREATER INFIX_GREATER_EQUAL
+%nonassoc <token> INFIX_EQUALITY INFIX_INEQUALITY INFIX_IDENTICAL INFIX_NOT_IDENTICAL
+%nonassoc <token> INFIX_PATTERN_MATCH INFIX_POINTWISE_LESS INFIX_POINTWISE_LESS_EQUAL
+%nonassoc <token> INFIX_POINTWISE_GREATER INFIX_POINTWISE_GREATER_EQUAL
+%nonassoc <token> INFIX_POINTWISE_EQUAL INFIX_POINTWISE_NOT_EQUAL
+
+    // NilCoalescingPrecedence: right associative
+%right <token> INFIX_NIL_COALESCING
+
+    // CastingPrecedence: AS / IS are keyword tokens
+%nonassoc AS IS
+
+    // RangeFormationPrecedence: non-associative
+%nonassoc <token> INFIX_HALF_OPEN_RANGE INFIX_CLOSED_RANGE
+
+    // AdditionPrecedence: left associative
+%left <token> INFIX_PLUS INFIX_MINUS INFIX_BITWISE_OR INFIX_BITWISE_XOR
+%left <token> INFIX_OVERFLOW_PLUS INFIX_OVERFLOW_MINUS
+
+    // MultiplicationPrecedence: left associative
+%left <token> INFIX_MULT INFIX_DIV INFIX_MOD INFIX_BITWISE_AND INFIX_OVERFLOW_MULT
+
+    // BitwiseShiftPrecedence: non-associative
+%nonassoc <token> INFIX_LSHIFT INFIX_RSHIFT INFIX_OVERFLOW_LSHIFT INFIX_OVERFLOW_RSHIFT
+
+    // Prefix/postfix forms
+%token <token> PREFIX_PLUS PREFIX_MINUS PREFIX_EXCLAMATION PREFIX_BITWISE_NOT
+%token <token> PREFIX_BITWISE_AND PREFIX_CLOSED_RANGE PREFIX_HALF_OPEN_RANGE
+%token <token> PREFIX_INCREMENT PREFIX_DECREMENT PREFIX_CUSTOM
+
+%token <token> POSTFIX_EXCLAMATION POSTFIX_QUESTION POSTFIX_CLOSED_RANGE
+%token <token> POSTFIX_INCREMENT POSTFIX_DECREMENT POSTFIX_CUSTOM
+
+    // специальные символы: '=', '?', '->'
+    
 %token NEWLINE
 
     // Для конструкций, которые лексер поддерживает, а парсер еще нет
@@ -99,8 +157,6 @@
 }
 
 %type <expr> expression
-%type <expr> sequence_expression
-%type <expr> infix_operator
 
 %type <expr> prefix_expression
 %type <expr> postfix_expression
@@ -457,27 +513,93 @@ catch_clause:
 
 expression:
       prefix_expression
-    | sequence_expression
-;
-
-sequence_expression:
-      prefix_expression infix_operator prefix_expression
-    | sequence_expression infix_operator prefix_expression
-;
-
-infix_operator:
-      INFIX_OPERATOR
-    | EQUAL
+    | expression EQUAL expression
+    | expression INFIX_MULT_ASSIGN expression
+    | expression INFIX_OVERFLOW_MULT_ASSIGN expression
+    | expression INFIX_DIV_ASSIGN expression
+    | expression INFIX_MOD_ASSIGN expression
+    | expression INFIX_PLUS_ASSIGN expression
+    | expression INFIX_OVERFLOW_PLUS_ASSIGN expression
+    | expression INFIX_MINUS_ASSIGN expression
+    | expression INFIX_OVERFLOW_MINUS_ASSIGN expression
+    | expression INFIX_LSHIFT_ASSIGN expression
+    | expression INFIX_OVERFLOW_LSHIFT_ASSIGN expression
+    | expression INFIX_RSHIFT_ASSIGN expression
+    | expression INFIX_OVERFLOW_RSHIFT_ASSIGN expression
+    | expression INFIX_BITWISE_AND_ASSIGN expression
+    | expression INFIX_BITWISE_XOR_ASSIGN expression
+    | expression INFIX_BITWISE_OR_ASSIGN expression
+    | expression INFIX_POINTWISE_BITWISE_AND_ASSIGN expression
+    | expression INFIX_POINTWISE_BITWISE_OR_ASSIGN expression
+    | expression INFIX_POINTWISE_BITWISE_XOR_ASSIGN expression
+    | expression INFIX_QUESTION expression ':' expression %prec INFIX_QUESTION
+    | expression INFIX_CUSTOM expression
+    | expression INFIX_LOGICAL_OR expression
+    | expression INFIX_POINTWISE_BITWISE_OR expression
+    | expression INFIX_POINTWISE_BITWISE_XOR expression
+    | expression INFIX_LOGICAL_AND expression
+    | expression INFIX_POINTWISE_BITWISE_AND expression
+    | expression INFIX_LESS expression
+    | expression INFIX_LESS_EQUAL expression
+    | expression INFIX_GREATER expression
+    | expression INFIX_GREATER_EQUAL expression
+    | expression INFIX_EQUALITY expression
+    | expression INFIX_INEQUALITY expression
+    | expression INFIX_IDENTICAL expression
+    | expression INFIX_NOT_IDENTICAL expression
+    | expression INFIX_PATTERN_MATCH expression
+    | expression INFIX_POINTWISE_LESS expression
+    | expression INFIX_POINTWISE_LESS_EQUAL expression
+    | expression INFIX_POINTWISE_GREATER expression
+    | expression INFIX_POINTWISE_GREATER_EQUAL expression
+    | expression INFIX_POINTWISE_EQUAL expression
+    | expression INFIX_POINTWISE_NOT_EQUAL expression
+    | expression INFIX_NIL_COALESCING expression
+    | expression AS type %prec AS
+    | expression AS POSTFIX_QUESTION type %prec AS
+    | expression AS POSTFIX_EXCLAMATION type %prec AS
+    | expression IS type %prec IS
+    | expression INFIX_HALF_OPEN_RANGE expression
+    | expression INFIX_CLOSED_RANGE expression
+    | expression INFIX_PLUS expression
+    | expression INFIX_MINUS expression
+    | expression INFIX_BITWISE_OR expression
+    | expression INFIX_BITWISE_XOR expression
+    | expression INFIX_OVERFLOW_PLUS expression
+    | expression INFIX_OVERFLOW_MINUS expression
+    | expression INFIX_MULT expression
+    | expression INFIX_DIV expression
+    | expression INFIX_MOD expression
+    | expression INFIX_BITWISE_AND expression
+    | expression INFIX_OVERFLOW_MULT expression
+    | expression INFIX_LSHIFT expression
+    | expression INFIX_RSHIFT expression
+    | expression INFIX_OVERFLOW_LSHIFT expression
+    | expression INFIX_OVERFLOW_RSHIFT expression
 ;
 
 prefix_expression:
       postfix_expression
-    | PREFIX_OPERATOR postfix_expression
+    | PREFIX_PLUS postfix_expression
+    | PREFIX_MINUS postfix_expression
+    | PREFIX_EXCLAMATION postfix_expression
+    | PREFIX_BITWISE_NOT postfix_expression
+    | PREFIX_BITWISE_AND postfix_expression
+    | PREFIX_CLOSED_RANGE postfix_expression
+    | PREFIX_HALF_OPEN_RANGE postfix_expression
+    | PREFIX_INCREMENT postfix_expression
+    | PREFIX_DECREMENT postfix_expression
+    | PREFIX_CUSTOM postfix_expression
 ;
 
 postfix_expression:
       primary_expression
-    | postfix_expression POSTFIX_OPERATOR
+    | postfix_expression POSTFIX_EXCLAMATION
+    | postfix_expression POSTFIX_CLOSED_RANGE
+    | postfix_expression POSTFIX_QUESTION
+    | postfix_expression POSTFIX_INCREMENT
+    | postfix_expression POSTFIX_DECREMENT
+    | postfix_expression POSTFIX_CUSTOM
     | postfix_expression '(' argument_list_opt ')'
 ;
 
