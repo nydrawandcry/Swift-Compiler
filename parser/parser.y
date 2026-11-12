@@ -188,13 +188,14 @@
 
 // вся программа
 program:
-    /* empty */
-    | global_decl_list
+      newline_list_opt
+    | newline_list_opt global_decl_list
 ;
 
 // список объявлений, разрешены несколько разделителей до и после списка
 global_decl_list:
-    newline_list_opt global_decl_list_core newline_list_opt
+      global_decl_list_core
+    | global_decl_list_core separator
 ;
 
 // разрешается только несколько newline подряд
@@ -207,14 +208,17 @@ global_decl_list:
 // ;
 global_decl_list_core:
       statement
-    | global_decl_list_core newline_list statement
-    | global_decl_list_core newline_list_opt ';' newline_list_opt statement
-    | global_decl_list_core newline_list_opt ';'
+    | global_decl_list_core separator statement
 ;
 
 newline_list_opt:
       /* empty */
     | newline_list
+;
+
+separator:
+      newline_list
+    | newline_list_opt ';' newline_list_opt
 ;
 
 newline_list:
@@ -317,19 +321,18 @@ struct_declaration:
 ;
 
 declaration_list_opt:
-      /* empty */
-    | declaration_list
+      newline_list_opt
+    | newline_list_opt declaration_list
 ;
 
 declaration_list:
-      newline_list_opt declaration_list_core newline_list_opt
+      declaration_list_core
+    | declaration_list_core separator
 ;
 
 declaration_list_core:
       declaration
-    | declaration_list_core newline_list declaration
-    | declaration_list_core newline_list_opt ';' newline_list_opt declaration
-    | declaration_list_core newline_list_opt ';'
+    | declaration_list_core separator declaration
 ;
 
     // ---------- классы
@@ -345,19 +348,18 @@ enum_declaration:
 ;
 
 enum_member_list_opt:
-    /* empty */
-    | enum_member_list
+      newline_list_opt
+    | newline_list_opt enum_member_list
 ;
 
 enum_member_list:
-      newline_list_opt enum_member_list_core newline_list_opt
+      enum_member_list_core
+    | enum_member_list_core separator
 ;
 
 enum_member_list_core:
       enum_member
-    | enum_member_list_core newline_list enum_member
-    | enum_member_list_core newline_list_opt ';' newline_list_opt enum_member
-    | enum_member_list_core newline_list_opt ';'
+    | enum_member_list_core separator enum_member
 ;
 
 enum_member:
@@ -390,19 +392,18 @@ code_block:
 ;
 
 statement_list_opt:
-    /* empty */
-    | statement_list
+      newline_list_opt
+    | newline_list_opt statement_list
 ;
 
 statement_list:
-      newline_list_opt statement_list_core newline_list_opt
+      statement_list_core
+    | statement_list_core separator
 ;
 
 statement_list_core:
       statement
-    | statement_list_core newline_list statement
-    | statement_list_core newline_list_opt ';' newline_list_opt statement
-    | statement_list_core newline_list_opt ';'
+    | statement_list_core separator statement
 ;
 
 statement:
