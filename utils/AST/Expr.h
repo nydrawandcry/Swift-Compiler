@@ -13,6 +13,8 @@
 namespace ast
 {
     enum class ExprKind {
+        Program,
+        StatementList,
         Identifier,
 
         IntegerLiteral,
@@ -162,6 +164,12 @@ namespace ast
     inline const char* kindName(ExprKind kind)
     {
         switch (kind) {
+            case ExprKind::Program:
+                return "Program";
+
+            case ExprKind::StatementList:
+                return "StatementList";
+
             case ExprKind::Identifier:
                 return "IdentifierExpr";
 

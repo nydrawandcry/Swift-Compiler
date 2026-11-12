@@ -184,18 +184,27 @@
 
 %start program
 
+%type <expr> program
+%type <expr> global_decl_list
+%type <expr> global_decl_list_core
+%type <expr> statement
+
 %%
 
 // вся программа
 program:
       newline_list_opt
+        { $$ = create_program(expressionAST, nullptr); }
     | newline_list_opt global_decl_list
+        { $$ = create_program(expressionAST, $2); }
 ;
 
 // список объявлений, разрешены несколько разделителей до и после списка
 global_decl_list:
       global_decl_list_core
+        { $$ = $1; }
     | global_decl_list_core separator
+        { $$ = $1; }
 ;
 
 // разрешается только несколько newline подряд
@@ -208,7 +217,9 @@ global_decl_list:
 // ;
 global_decl_list_core:
       statement
+        { $$ = create_statement_list(expressionAST, $1); }
     | global_decl_list_core separator statement
+        { $$ = append_statement(expressionAST, $1, $3); }
 ;
 
 newline_list_opt:
@@ -406,18 +417,30 @@ statement_list_core:
     | statement_list_core separator statement
 ;
 
+// todo доделать для остальных
 statement:
       declaration
+        { $$ = nullptr; }
     | expression
+        { $$ = $1; }
     | if_statement
+        { $$ = nullptr; }
     | while_statement
+        { $$ = nullptr; }
     | for_statement
+        { $$ = nullptr; }
     | repeat_while_statement
+        { $$ = nullptr; }
     | return_statement
+        { $$ = nullptr; }
     | BREAK
+        { $$ = nullptr; }
     | CONTINUE
+        { $$ = nullptr; }
     | DEFER code_block
+        { $$ = nullptr; }
     | do_statement
+        { $$ = nullptr; }
 ;
 
 // чем дальше в лес, иф элс иф элс

@@ -8,6 +8,22 @@ ast::Expr* create_expr(
     TokenValue* token
 );
 
+ast::Expr* create_program(
+    ast::Context& context,
+    ast::Expr* statements
+);
+
+ast::Expr* create_statement_list(
+    ast::Context& context,
+    ast::Expr* statement
+);
+
+ast::Expr* append_statement(
+    ast::Context& context,
+    ast::Expr* list,
+    ast::Expr* statement
+);
+
 ast::Expr* create_self_expr(
     ast::Context& context
 );

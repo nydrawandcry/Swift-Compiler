@@ -1,5 +1,10 @@
 #include "./tree_nodes.hpp"
 
+#include <cstdint>
+#include <iostream>
+#include <string>
+#include <unordered_set>
+
 namespace
 {
     SourceLocation empty_location()
@@ -29,6 +34,57 @@ ast::Expr* create_expr(
     }
 
     return node;
+}
+
+ast::Expr* create_program(
+    ast::Context& context,
+    ast::Expr* statements
+) {
+    ast::Expr* program = context.make(
+        ast::ExprKind::Program,
+        empty_location()
+    );
+
+    if (statements) {
+        program->children.push_back(statements);
+    }
+
+    context.roots.push_back(program);
+
+    return program;
+}
+
+ast::Expr* create_statement_list(
+    ast::Context& context,
+    ast::Expr* statement
+) {
+    ast::Expr* list = context.make(
+        ast::ExprKind::StatementList,
+        expression_location(statement)
+    );
+
+    if (statement) {
+        list->children.push_back(statement);
+    }
+
+    return list;
+}
+
+ast::Expr* append_statement(
+    ast::Context& context,
+    ast::Expr* list,
+    ast::Expr* statement
+) {
+    if (!list) {
+        return create_statement_list(context, statement);
+    }
+
+    if (statement) {
+        list->children.push_back(statement);
+        list->location = expression_location(statement);
+    }
+
+    return list;
 }
 
 ast::Expr* create_self_expr(
