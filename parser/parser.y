@@ -146,9 +146,9 @@ global_decl_list:
 //
 // ;
 global_decl_list_core:
-      global_decl
-    | global_decl_list_core newline_list global_decl
-    | global_decl_list_core newline_list_opt ';' newline_list_opt global_decl
+      statement
+    | global_decl_list_core newline_list statement
+    | global_decl_list_core newline_list_opt ';' newline_list_opt statement
     | global_decl_list_core newline_list_opt ';'
 ;
 
@@ -160,10 +160,6 @@ newline_list_opt:
 newline_list:
       NEWLINE
     | newline_list NEWLINE
-;
-
-global_decl:
-      statement
 ;
 
 // объявление
@@ -217,8 +213,8 @@ variable_declaration:
 // пусто быть не может: либо указывается тип, либо выражение, либо и то и то
 variable_tail:
       type_annotation
-    | EQUAL expression_root
-    | type_annotation EQUAL expression_root
+    | EQUAL expression
+    | type_annotation EQUAL expression
 ;
 
 type_annotation:
@@ -351,15 +347,15 @@ statement_list_core:
 
 statement:
       declaration
-    | expression_root
+    | expression
     | if_statement
     | while_statement
     | for_statement
     | repeat_while_statement
     | return_statement
-    | break_statement
-    | continue_statement
-    | defer_statement
+    | BREAK
+    | CONTINUE
+    | DEFER code_block
     | do_statement
 ;
 
@@ -376,7 +372,7 @@ condition_list:
 
 // скобки круглые опциональные (есть в експрешн)
 condition:
-      expression_root
+      expression
 //    | availability_condition убрала это, тк оно еще не реализовано и вылазиет ошибка
 //    | case_condition
     | optional_binding_condition
@@ -388,19 +384,15 @@ else_clause_opt:
     | ELSE if_statement
 ;
 
-initializer:
-    EQUAL expression_root
-;
-
 // ----------- условия
 
 // optional_binding_condition - проверяет переменную есть ли в ней значение (не нулл) и помещает значение в переменную если та указана
     // `if let name ...` ИЛИ `if let name = optName ...`
 optional_binding_condition:
       LET IDENTIFIER
-    | LET IDENTIFIER initializer
+    | LET IDENTIFIER EQUAL expression
     | VAR IDENTIFIER
-    | VAR IDENTIFIER initializer
+    | VAR IDENTIFIER EQUAL expression
 ;
 
 // проверка на соответствие с образцом
@@ -429,38 +421,23 @@ optional_binding_condition:
 
 // while
 while_statement:
-    WHILE expression_root code_block
+    WHILE expression code_block
 ;
 
 // for in
 for_statement:
-    FOR IDENTIFIER IN expression_root code_block
+    FOR IDENTIFIER IN expression code_block
 ;
 
 // repeat
 repeat_while_statement:
-    REPEAT code_block WHILE expression_root
+    REPEAT code_block WHILE expression
 ;
 
 // return
 return_statement:
       RETURN
-    | RETURN expression_root
-;
-
-// break
-break_statement:
-    BREAK
-;
-
-// continue
-continue_statement:
-    CONTINUE
-;
-
-// defer
-defer_statement:
-    DEFER code_block
+    | RETURN expression
 ;
 
 // do-catch
@@ -476,10 +453,7 @@ catch_clause:
 // ------------ выражения и AST
 
 //выражение, используемое внешней конструкцией:
-//объявлением, условием, ретурном и тд
-expression_root:
-    expression
-;
+//объявлением, условием, ретурном и тд (тут был expression_root : expression)
 
 expression:
       prefix_expression
