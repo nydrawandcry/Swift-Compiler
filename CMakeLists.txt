@@ -38,6 +38,8 @@ add_executable(
         src/main.cpp
         utils/Buffer/Buffer.cpp
         utils/Buffer/Buffer.h
+        utils/AST/TreeNodes/tree_nodes.cpp
+        utils/AST/TreeNodes/tree_nodes.hpp
 
         ${BISON_Parser_OUTPUTS}
         ${FLEX_Lexer_OUTPUTS}

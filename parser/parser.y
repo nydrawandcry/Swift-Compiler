@@ -5,6 +5,7 @@
   #include <stdlib.h>
   #include <iostream>
   #include "utils/AST/Expr.h"
+  #include "utils/AST/tree_nodes.hpp"
 
   ast::Context expressionAST;
 
@@ -516,128 +517,230 @@ catch_clause:
 
 expression:
       prefix_expression
+        { $$ = $1; }
     | expression EQUAL expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_MULT_ASSIGN expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_OVERFLOW_MULT_ASSIGN expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_DIV_ASSIGN expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_MOD_ASSIGN expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_PLUS_ASSIGN expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_OVERFLOW_PLUS_ASSIGN expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_MINUS_ASSIGN expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_OVERFLOW_MINUS_ASSIGN expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_LSHIFT_ASSIGN expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_OVERFLOW_LSHIFT_ASSIGN expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_RSHIFT_ASSIGN expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_OVERFLOW_RSHIFT_ASSIGN expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_BITWISE_AND_ASSIGN expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_BITWISE_XOR_ASSIGN expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_BITWISE_OR_ASSIGN expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_POINTWISE_BITWISE_AND_ASSIGN expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_POINTWISE_BITWISE_OR_ASSIGN expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_POINTWISE_BITWISE_XOR_ASSIGN expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_QUESTION expression ':' expression %prec INFIX_QUESTION
+        { $$ = create_ternary_expr(expressionAST, $1, $2, $3, $5); }
     | expression INFIX_CUSTOM expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_LOGICAL_OR expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_POINTWISE_BITWISE_OR expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_POINTWISE_BITWISE_XOR expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_LOGICAL_AND expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_POINTWISE_BITWISE_AND expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_LESS expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_LESS_EQUAL expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_GREATER expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_GREATER_EQUAL expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_EQUALITY expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_INEQUALITY expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_IDENTICAL expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_NOT_IDENTICAL expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_PATTERN_MATCH expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_POINTWISE_LESS expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_POINTWISE_LESS_EQUAL expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_POINTWISE_GREATER expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_POINTWISE_GREATER_EQUAL expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_POINTWISE_EQUAL expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_POINTWISE_NOT_EQUAL expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_NIL_COALESCING expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression AS type %prec AS
+        { $$ = $1; }
     | expression AS POSTFIX_QUESTION type %prec AS
+        { $$ = $1; }
     | expression AS POSTFIX_EXCLAMATION type %prec AS
+        { $$ = $1; }
     | expression IS type %prec IS
+        { $$ = $1; }
     | expression INFIX_HALF_OPEN_RANGE expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_CLOSED_RANGE expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_PLUS expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_MINUS expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_BITWISE_OR expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_BITWISE_XOR expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_OVERFLOW_PLUS expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_OVERFLOW_MINUS expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_MULT expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_DIV expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_MOD expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_BITWISE_AND expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_OVERFLOW_MULT expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_LSHIFT expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_RSHIFT expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_OVERFLOW_LSHIFT expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
     | expression INFIX_OVERFLOW_RSHIFT expression
+        { $$ = create_infix_expr(expressionAST, $1, $2, $3); }
 ;
 
 prefix_expression:
       postfix_expression
+        { $$ = $1; }
     | PREFIX_PLUS postfix_expression
+        { $$ = create_un_expr(expressionAST, ast::ExprKind::Prefix, $2, $1); }
     | PREFIX_MINUS postfix_expression
+        { $$ = create_un_expr(expressionAST, ast::ExprKind::Prefix, $2, $1); }
     | PREFIX_EXCLAMATION postfix_expression
+        { $$ = create_un_expr(expressionAST, ast::ExprKind::Prefix, $2, $1); }
     | PREFIX_BITWISE_NOT postfix_expression
+        { $$ = create_un_expr(expressionAST, ast::ExprKind::Prefix, $2, $1); }
     | PREFIX_BITWISE_AND postfix_expression
+        { $$ = create_un_expr(expressionAST, ast::ExprKind::Prefix, $2, $1); }
     | PREFIX_CLOSED_RANGE postfix_expression
+        { $$ = create_un_expr(expressionAST, ast::ExprKind::Prefix, $2, $1); }
     | PREFIX_HALF_OPEN_RANGE postfix_expression
+        { $$ = create_un_expr(expressionAST, ast::ExprKind::Prefix, $2, $1); }
     | PREFIX_INCREMENT postfix_expression
+        { $$ = create_un_expr(expressionAST, ast::ExprKind::Prefix, $2, $1); }
     | PREFIX_DECREMENT postfix_expression
+        { $$ = create_un_expr(expressionAST, ast::ExprKind::Prefix, $2, $1); }
     | PREFIX_CUSTOM postfix_expression
+        { $$ = create_un_expr(expressionAST, ast::ExprKind::Prefix, $2, $1); }
 ;
 
 postfix_expression:
       primary_expression
+        { $$ = $1; }
     | postfix_expression POSTFIX_EXCLAMATION
+        { $$ = create_un_expr(expressionAST, ast::ExprKind::Postfix, $1, $2); }
     | postfix_expression POSTFIX_CLOSED_RANGE
+        { $$ = create_un_expr(expressionAST, ast::ExprKind::Postfix, $1, $2); }
     | postfix_expression POSTFIX_QUESTION
+        { $$ = create_un_expr(expressionAST, ast::ExprKind::Postfix, $1, $2); }
     | postfix_expression POSTFIX_INCREMENT
+        { $$ = create_un_expr(expressionAST, ast::ExprKind::Postfix, $1, $2); }
     | postfix_expression POSTFIX_DECREMENT
+        { $$ = create_un_expr(expressionAST, ast::ExprKind::Postfix, $1, $2); }
     | postfix_expression POSTFIX_CUSTOM
+        { $$ = create_un_expr(expressionAST, ast::ExprKind::Postfix, $1, $2); }
     | postfix_expression '(' argument_list_opt ')'
+        { $$ = create_call_expr(expressionAST, $1, $3); }
 ;
 
 primary_expression:
       literal
+        { $$ = $1; }
     | IDENTIFIER
+        { $$ = create_expr(expressionAST, ast::ExprKind::Identifier, $1); }
     | TYPE
+        { $$ = create_expr(expressionAST, ast::ExprKind::Identifier, $1); }
     | SELF
+        { $$ = create_self_expr(expressionAST); }
     | '(' expression ')'
+        { $$ = create_group_expr(expressionAST, $2); }
 ;
 
 literal:
       INTEGER_LITERAL
+        { $$ = create_expr(expressionAST, ast::ExprKind::IntegerLiteral, $1); }
     | FLOATING_POINT_LITERAL
+        { $$ = create_expr(expressionAST, ast::ExprKind::FloatingLiteral, $1); }
     | BOOLEAN_LITERAL
+        { $$ = create_expr(expressionAST, ast::ExprKind::BooleanLiteral, $1); }
     | NIL_LITERAL
+        { $$ = create_expr(expressionAST, ast::ExprKind::NilLiteral, $1); }
     | STRING_LITERAL
+        { $$ = create_expr(expressionAST, ast::ExprKind::StringLiteral, $1); }
     | RAW_STRING_LITERAL
+        { $$ = create_expr(expressionAST, ast::ExprKind::RawStringLiteral, $1); }
     | MULTILINE_STRING_LITERAL
+        { $$ = create_expr(expressionAST, ast::ExprKind::MultilineStringLiteral, $1); }
     | RAW_MULTILINE_STRING_LITERAL
+        { $$ = create_expr(expressionAST, ast::ExprKind::RawMultilineStringLiteral, $1); }
 ;
 
 argument_list_opt:
       /* empty */
+        { $$ = nullptr; }
     | argument_list
+        { $$ = $1; }
 ;
 
 argument_list:
       argument
+        { $$ = create_argument_list(expressionAST, $1); }
     | argument_list ',' argument
+        { $$ = append_argument(expressionAST, $1, $3); }
 ;
 
 argument:
       expression
+        { $$ = $1; }
     | IDENTIFIER ':' expression
+        { $$ = create_named_argument(expressionAST, $1, $3); }
 ;
 
 %%
