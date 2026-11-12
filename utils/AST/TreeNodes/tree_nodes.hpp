@@ -77,3 +77,11 @@ ast::Expr* create_named_argument(
     TokenValue* name,
     ast::Expr* expression
 );
+
+void global_print_to_dot(
+    const ast::Expr* root
+);
+
+void print_expr_to_dot(
+    const ast::Expr* root
+);

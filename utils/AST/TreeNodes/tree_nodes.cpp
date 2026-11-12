@@ -16,6 +16,82 @@ namespace
     {
         return expression ? expression->location : empty_location();
     }
+
+    std::string dot_id(const ast::Expr* expression)
+    {
+        return "node_" +
+            std::to_string(
+                static_cast<std::uintptr_t>(
+                    reinterpret_cast<std::uintptr_t>(expression)
+                )
+            );
+    }
+
+    std::string dot_escape(const std::string& text)
+    {
+        std::string result;
+
+        for (char character : text) {
+            switch (character) {
+                case '\\':
+                    result += "\\\\";
+                    break;
+                case '"':
+                    result += "\\\"";
+                    break;
+                case '\n':
+                    result += "\\n";
+                    break;
+                case '\r':
+                    result += "\\r";
+                    break;
+                default:
+                    result += character;
+                    break;
+            }
+        }
+
+        return result;
+    }
+
+    void print_expr_to_dot_impl(
+        const ast::Expr* expression,
+        std::unordered_set<const ast::Expr*>& printed
+    ) {
+        if (!expression || !printed.insert(expression).second) {
+            return;
+        }
+
+        const std::string id = dot_id(expression);
+        std::string label = ast::kindName(expression->kind);
+
+        if (!expression->text.empty()) {
+            label += "\\n";
+            label += expression->text;
+        }
+
+        std::cout
+            << "  "
+            << id
+            << " [label=\""
+            << dot_escape(label)
+            << "\"];\n";
+
+        for (const ast::Expr* child : expression->children) {
+            if (!child) {
+                continue;
+            }
+
+            std::cout
+                << "  "
+                << id
+                << " -> "
+                << dot_id(child)
+                << ";\n";
+
+            print_expr_to_dot_impl(child, printed);
+        }
+    }
 }
 
 ast::Expr* create_expr(
@@ -243,4 +319,22 @@ ast::Expr* create_named_argument(
 
     argument->children.push_back(expression);
     return argument;
+}
+
+void global_print_to_dot(
+    const ast::Expr* root
+) {
+    std::cout << "digraph AST {\n";
+
+    std::unordered_set<const ast::Expr*> printed;
+    print_expr_to_dot_impl(root, printed);
+
+    std::cout << "}\n";
+}
+
+void print_expr_to_dot(
+    const ast::Expr* root
+) {
+    std::unordered_set<const ast::Expr*> printed;
+    print_expr_to_dot_impl(root, printed);
 }

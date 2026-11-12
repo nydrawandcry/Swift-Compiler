@@ -1,8 +1,11 @@
 #include <stdio.h>
 
+#include "utils/AST/TreeNodes/tree_nodes.hpp"
+
 extern FILE *yyin;
 extern int yyparse(void);
 
+extern ast::Context expressionAST;
 extern int lexerErrors;
 extern int parseErrors;
 
@@ -29,6 +32,11 @@ int main(int argc, char *argv[])
     if (parseResult != 0 || parseErrors != 0 || lexerErrors != 0)
     {
         return 1;
+    }
+
+    if (!expressionAST.roots.empty())
+    {
+        global_print_to_dot(expressionAST.roots.front());
     }
 
     return 0;
