@@ -112,6 +112,33 @@ ast::Expr* create_expr(
     return node;
 }
 
+ast::Expr* create_variable_declaration(
+    ast::Context& context,
+    TokenValue* name,
+    bool isConstant,
+    ast::Expr* declaredType,
+    ast::Expr* initialValue
+) {
+    ast::ExprKind kind = ast::ExprKind::VariableDeclaration;
+
+    if (isConstant) {
+        kind = ast::ExprKind::ConstantDeclaration;
+    }
+
+    ast::Expr* node = context.make(
+        kind,
+        empty_location(),
+        name->text
+    );
+
+    node->value = *name;
+
+    node->children.push_back(declaredType);
+    node->children.push_back(initialValue);
+
+    return node;
+}
+
 ast::Expr* create_program(
     ast::Context& context,
     ast::Expr* statements
@@ -199,27 +226,23 @@ ast::Expr* create_infix_expr(
     TokenValue* operatorToken,
     ast::Expr* right
 ) {
-    ast::Expr* operatorNode = create_expr(
+    ast::Expr* node = create_expr(
         context,
         ast::ExprKind::InfixOperator,
         operatorToken
     );
 
-    if (left && left->kind == ast::ExprKind::Sequence) {
-        return context.appendSequence(
-            left,
-            operatorNode,
-            right,
-            expression_location(right)
-        );
+    node->location = expression_location(left);
+
+    if (right) {
+        node->location.last_line = right->location.last_line;
+        node->location.last_column = right->location.last_column;
     }
 
-    return context.sequence(
-        left,
-        operatorNode,
-        right,
-        expression_location(right)
-    );
+    node->children.push_back(left);
+    node->children.push_back(right);
+
+    return node;
 }
 
 ast::Expr* create_ternary_expr(
@@ -229,31 +252,24 @@ ast::Expr* create_ternary_expr(
     ast::Expr* trueExpression,
     ast::Expr* falseExpression
 ) {
-    ast::Expr* questionNode = create_expr(
+    ast::Expr* node = create_expr(
         context,
-        ast::ExprKind::InfixOperator,
+        ast::ExprKind::Ternary,
         questionToken
     );
 
-    ast::Expr* colonNode = context.make(
-        ast::ExprKind::InfixOperator,
-        empty_location(),
-        ":"
-    );
+    node->location = expression_location(condition);
 
-    ast::Expr* result = context.sequence(
-        condition,
-        questionNode,
-        trueExpression,
-        expression_location(falseExpression)
-    );
+    if (falseExpression) {
+        node->location.last_line = falseExpression->location.last_line;
+        node->location.last_column = falseExpression->location.last_column;
+    }
 
-    return context.appendSequence(
-        result,
-        colonNode,
-        falseExpression,
-        expression_location(falseExpression)
-    );
+    node->children.push_back(condition);
+    node->children.push_back(trueExpression);
+    node->children.push_back(falseExpression);
+
+    return node;
 }
 
 ast::Expr* create_group_expr(

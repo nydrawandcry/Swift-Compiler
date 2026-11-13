@@ -72,6 +72,14 @@ ast::Expr* append_argument(
     ast::Expr* argument
 );
 
+ast::Expr* create_variable_declaration(
+    ast::Context& context,
+    TokenValue* name,
+    bool isConstant,
+    ast::Expr* declaredType,
+    ast::Expr* initialValue
+);
+
 ast::Expr* create_named_argument(
     ast::Context& context,
     TokenValue* name,

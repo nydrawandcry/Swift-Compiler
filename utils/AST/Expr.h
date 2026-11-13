@@ -34,6 +34,11 @@ namespace ast
         ArgumentList,
         Argument,
 
+        ConstantDeclaration,
+        VariableDeclaration,
+        TypeName,
+        Ternary,
+
         Group,
         Sequence,
         InfixOperator
@@ -211,6 +216,18 @@ namespace ast
 
             case ExprKind::Argument:
                 return "Argument";
+
+            case ExprKind::ConstantDeclaration:
+                return "ConstantDeclaration";
+
+            case ExprKind::VariableDeclaration:
+                return "VariableDeclaration";
+
+            case ExprKind::TypeName:
+                return "TypeName";
+
+            case ExprKind::Ternary:
+                return "TernaryExpr";
 
             case ExprKind::Group:
                 return "GroupExpr";

@@ -5,8 +5,8 @@
   #include <stdlib.h>
   #include <iostream>
   #include "utils/AST/Expr.h"
-  #include "utils/AST/tree_nodes.hpp"
-
+  #include "utils/AST/TreeNodes/tree_nodes.hpp"
+  
   ast::Context expressionAST;
 
   int yylex();
