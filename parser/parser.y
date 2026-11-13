@@ -6,7 +6,7 @@
   #include <iostream>
   #include "utils/AST/Expr.h"
   #include "utils/AST/TreeNodes/tree_nodes.hpp"
-  
+
   ast::Context expressionAST;
 
   int yylex();
@@ -189,6 +189,12 @@
 %type <expr> global_decl_list_core
 %type <expr> statement
 
+%type <expr> declaration
+%type <expr> variable_declaration
+%type <expr> type_annotation
+%type <expr> type
+%type <expr> type_identifier
+
 %%
 
 // вся программа
@@ -238,16 +244,26 @@ newline_list:
 ;
 
 // объявление
+//пока нормально узелок создается для переменной, todo остальное нул птрами - заготовочки
 declaration:
       variable_declaration
+        { $$ = $1; }
     | function_declaration
+        { $$ = nullptr; }
     | struct_declaration
+        { $$ = nullptr; }
     | class_declaration
+        { $$ = nullptr; }
     | enum_declaration
+        { $$ = nullptr; }
     | protocol_declaration
+        { $$ = nullptr; }
     | extension_declaration
+        { $$ = nullptr; }
     | import_declaration
+        { $$ = nullptr; }
     | typealias_declaration
+        { $$ = nullptr; }
 ;
 
 // чет типа интерфейса?
@@ -281,19 +297,23 @@ typealias_declaration:
 
 // объявление переменной
 variable_declaration:
-      LET IDENTIFIER variable_tail
-    | VAR IDENTIFIER variable_tail
-;
-
-// пусто быть не может: либо указывается тип, либо выражение, либо и то и то
-variable_tail:
-      type_annotation
-    | EQUAL expression
-    | type_annotation EQUAL expression
+      LET IDENTIFIER type_annotation
+        { $$ = create_variable_declaration(expressionAST, $2, true, $3, nullptr); }
+    | LET IDENTIFIER EQUAL expression
+        { $$ = create_variable_declaration(expressionAST, $2, true, nullptr, $4); }
+    | LET IDENTIFIER type_annotation EQUAL expression
+        { $$ = create_variable_declaration(expressionAST, $2, true, $3, $5); }
+    | VAR IDENTIFIER type_annotation
+        { $$ = create_variable_declaration(expressionAST, $2, false, $3, nullptr); }
+    | VAR IDENTIFIER EQUAL expression
+        { $$ = create_variable_declaration(expressionAST, $2, false, nullptr, $4); }
+    | VAR IDENTIFIER type_annotation EQUAL expression
+        { $$ = create_variable_declaration(expressionAST, $2, false, $3, $5); }
 ;
 
 type_annotation:
     ':' type
+        { $$ = $2; }
 ;
 
     // ---------- функции
@@ -388,13 +408,23 @@ identifier_list:
 // тип переменной
 type:
       type_identifier
+        { $$ = $1; }
     // todo массивы и тд и тп
 ;
 
 type_identifier:
       IDENTIFIER
+        { $$ = create_expr(expressionAST, ast::ExprKind::TypeName, $1); }
     | TYPE
+        { $$ = create_expr(expressionAST, ast::ExprKind::TypeName, $1); }
     | type_identifier '.' IDENTIFIER
+        {
+            $$ = $1;
+            $$->text += ".";
+            $$->text += $3->text;
+            $$->value.text = $$->text;
+            $$->value.dataType = DataType::Unknown;
+        }
 ;
 
 // блок кода
@@ -420,7 +450,7 @@ statement_list_core:
 // todo доделать для остальных
 statement:
       declaration
-        { $$ = nullptr; }
+        { $$ = $1; }
     | expression
         { $$ = $1; }
     | if_statement
