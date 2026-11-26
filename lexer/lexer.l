@@ -1521,36 +1521,35 @@ int emitOperatorToken(bool rightWhitespace, bool followedByDot)
         fixity = operatorLeftWhitespace ? OperatorType::PREFIX : OperatorType::POSTFIX;
     }
 
-        if (fixity != OperatorType::INFIX &&
-            operators::infixPrecedence(op) == operators::Precedence::Assignment) {
-            lexerError(
-                "Lexer error at line %d: assignment operator '%s' must be infix\n",
-                operatorLine, op.c_str()
-            );
-            return LEX_ERROR;
-        }
-        if (op == "?" && fixity == OperatorType::PREFIX) {
-            lexerError("Lexer error at line %d: '?' cannot be used as a prefix operator\n", operatorLine);
-            return LEX_ERROR;
-        }
-
-        yylval.token = makeValue(op);
-        yylval.token->operatorType = fixity;
-
-        if (op == "->") return ARROW;
-        if (op == "=") return EQUAL;
-        if (op == "?") {
-            return fixity == OperatorType::POSTFIX ? POSTFIX_QUESTION : INFIX_QUESTION;
-    }
-        if (op == "!" && fixity == OperatorType::POSTFIX) return POSTFIX_EXCLAMATION;
-
-        switch (fixity) {
-            case OperatorType::PREFIX:  return PREFIX_OPERATOR;
-            case OperatorType::POSTFIX: return POSTFIX_OPERATOR;
-            case OperatorType::INFIX:   return INFIX_OPERATOR;
-        }
+    if (fixity != OperatorType::INFIX &&
+        operators::infixPrecedence(op) == operators::Precedence::Assignment) {
+        lexerError(
+            "Lexer error at line %d: assignment operator '%s' must be infix\n",
+            operatorLine, op.c_str()
+        );
         return LEX_ERROR;
     }
+    if (op == "?" && fixity == OperatorType::PREFIX) {
+        lexerError("Lexer error at line %d: '?' cannot be used as a prefix operator\n", operatorLine);
+        return LEX_ERROR;
+    }
+
+    yylval.token = makeValue(op);
+    yylval.token->operatorType = fixity;
+
+    if (op == "->") return ARROW;
+    if (op == "=") return EQUAL;
+    if (op == "?") {
+        return fixity == OperatorType::POSTFIX ? POSTFIX_QUESTION : INFIX_QUESTION;
+    }
+    if (op == "!" && fixity == OperatorType::POSTFIX) return POSTFIX_EXCLAMATION;
+
+    switch (fixity) {
+        case OperatorType::PREFIX:  return PREFIX_OPERATOR;
+        case OperatorType::POSTFIX: return POSTFIX_OPERATOR;
+        case OperatorType::INFIX:   return INFIX_OPERATOR;
+    }
+    return LEX_ERROR;
 }
 
 int readInteger(const char* text, int base, int skip) {
