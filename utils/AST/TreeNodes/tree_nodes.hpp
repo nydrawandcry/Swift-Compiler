@@ -53,7 +53,8 @@ ast::Expr* create_ternary_expr(
 ast::Expr* fold_expression_sequence(
     ast::Context& context,
     ast::Expr* expression,
-    const ast::Expr*& conflictingOperator
+    const ast::Expr*& conflictingOperator,
+    std::string& errorMessage
 );
 
 ast::Expr* create_group_expr(

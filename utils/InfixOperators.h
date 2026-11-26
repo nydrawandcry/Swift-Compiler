@@ -2,6 +2,7 @@
 
 #include <string_view>
 #include <unordered_map>
+#include <optional>
 
 /**
  * Операторы (построение своей системы операторов и их приоритетов)
@@ -13,7 +14,9 @@ namespace operators
      */
     enum class Precedence {
         Assignment,
+        FunctionArrow,
         Ternary,
+        Default,
         Unclassified,
         LogicalDisjunction,
         LogicalConjunction,
@@ -30,6 +33,33 @@ namespace operators
      * Ассоциативность
      */
     enum class Associativity { Left, Right, None };
+
+    inline std::optional<Precedence> builtInPrecedenceGroup(std::string_view name)
+    {
+        using enum Precedence;
+
+        static const std::unordered_map<std::string_view, Precedence> groups = {
+            {"AssignmentPrecedence", Assignment},
+            {"FunctionArrowPrecedence", FunctionArrow},
+            {"TernaryPrecedence", Ternary},
+            {"DefaultPrecedence", Default},
+            {"LogicalDisjunctionPrecedence", LogicalDisjunction},
+            {"LogicalConjunctionPrecedence", LogicalConjunction},
+            {"ComparisonPrecedence", Comparison},
+            {"NilCoalescingPrecedence", NilCoalescing},
+            {"CastingPrecedence", Casting},
+            {"RangeFormationPrecedence", Range},
+            {"AdditionPrecedence", Addition},
+            {"MultiplicationPrecedence", Multiplication},
+            {"BitwiseShiftPrecedence", BitwiseShift}
+        };
+
+        const auto found = groups.find(name);
+        if (found == groups.end()) {
+            return std::nullopt;
+        }
+        return found->second;
+    }
 
     /**
      * Нахождение инфиксной приоритетности у оператора
@@ -80,6 +110,7 @@ namespace operators
         using enum Precedence;
         switch (precedence) {
             case Assignment:
+            case FunctionArrow:
             case Ternary:
             case NilCoalescing:
                 return Associativity::Right;

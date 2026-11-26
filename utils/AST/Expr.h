@@ -1,5 +1,7 @@
 #pragma once
 
+#include "utils/InfixOperators.h"
+
 #include <iomanip>
 #include <memory>
 #include <ostream>
@@ -66,6 +68,9 @@ namespace ast
 
         //цепочки выражений в порядке завершения разбора выражений
         std::vector<Expr*> pendingSequences;
+
+        //объявления
+        std::unordered_map<std::string, operators::Precedence> infixOperatorDeclarations;
 
         Expr* make(
             ExprKind kind,
@@ -163,6 +168,7 @@ namespace ast
         {
             roots.clear();
             pendingSequences.clear();
+            infixOperatorDeclarations.clear();
             nodes.clear();
         }
 

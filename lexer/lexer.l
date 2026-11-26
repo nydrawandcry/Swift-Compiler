@@ -194,7 +194,7 @@ FLOAT_HEXADECIMAL 0x{HEX_DIGITS}(\.{HEX_DIGITS})?{HEX_EXPONENT}
 "let"               { return LET; }
 "nonisolated"       { printf("KEYWORD: nonisolated\n"); }
 "open"              { return OPEN; }
-"operator"          { printf("KEYWORD: operator\n"); }
+"operator"          { return KW_OPERATOR; }
 "precedencegroup"   { printf("KEYWORD: precedencegroup\n"); }
 "private"           { return PRIVATE; }
 "protocol"          { return PROTOCOL; }
@@ -300,7 +300,7 @@ _ {
 "final"              { return FINAL; }
 "get"                { return GET; }
 "indirect"           { printf("CONTEXTUAL_KEYWORD: indirect\n"); }
-"infix"              { printf("CONTEXTUAL_KEYWORD: infix\n"); }
+"infix"              { return KW_INFIX; }
 "lazy"               { printf("CONTEXTUAL_KEYWORD: lazy\n"); }
 "left"               { printf("CONTEXTUAL_KEYWORD: left\n"); }
 "mutating"           { return MUTATING; }

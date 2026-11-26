@@ -268,15 +268,18 @@ ast::Expr* create_ternary_expr(
 ast::Expr* fold_expression_sequence(
     ast::Context& context,
     ast::Expr* expression,
-    const ast::Expr*& conflictingOperator
+    const ast::Expr*& conflictingOperator,
+    std::string& errorMessage
 ) {
     if (expression->kind != ast::ExprKind::Sequence) {
         return expression;
     }
 
+    using operators::Precedence;
+
     struct PendingOperator {
         ast::Expr* node;
-        operators::Precedence precedence;
+        Precedence precedence;
     };
 
     std::vector<PendingOperator> pendingOperators;
@@ -299,14 +302,25 @@ ast::Expr* fold_expression_sequence(
 
     for (std::size_t i = 1; i < expression->children.size(); i += 2) {
         ast::Expr* op = expression->children[i];
-        const auto precedence = operators::infixPrecedence(op->text);
+        const auto declaration = context.infixOperatorDeclarations.find(op->text);
+        const auto precedence = declaration != context.infixOperatorDeclarations.end()
+            ? declaration->second
+            : operators::infixPrecedence(op->text);
 
         while (!pendingOperators.empty()) {
-            const auto previous = pendingOperators.back().precedence;
+            const auto& pending = pendingOperators.back();
+            const auto previous = pending.precedence;
 
-            //правый операнд у операции "приведение типа" заканчивается на типе,
-                //который "поглощается" грамматикой
-            if (previous != operators::Precedence::Casting) {
+            // у настоящего приведения справа тип, уже разобранный грамматикой
+            if (operands.back()->kind != ast::ExprKind::TypeName) {
+                // у дефолта нет порядка относительно групп выше тернарки
+                if ((previous == Precedence::Default && precedence > Precedence::Default) ||
+                    (precedence == Precedence::Default && previous > Precedence::Default)) {
+                    conflictingOperator = op;
+                    errorMessage = "operators '" + pending.node->text + "' and '" + op->text +
+                        "' are in unrelated precedence groups; add parentheses";
+                    return nullptr;
+                }
                 if (previous < precedence) {
                     break;
                 }
@@ -317,6 +331,8 @@ ast::Expr* fold_expression_sequence(
                     }
                     if (associativity == operators::Associativity::None) {
                         conflictingOperator = op;
+                        errorMessage = "operator '" + op->text +
+                            "' cannot be chained at this precedence without parentheses";
                         return nullptr;
                     }
                 }

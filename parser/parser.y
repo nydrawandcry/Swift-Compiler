@@ -47,6 +47,7 @@
 
     // DECLARATIONS
 %token LET VAR FUNC IMPORT
+%token KW_INFIX "infix" KW_OPERATOR "operator"
 %token STRUCT CLASS ENUM PROTOCOL EXTENSION
 %token TYPEALIAS
 %token INIT DEINIT SUBSCRIPT ASSOCIATEDTYPE
@@ -106,6 +107,7 @@
 
 %type <expr> expression sequence_expression ternary_operator cast_operator
 %type <text> infix_operator postfix_operator
+%type <token> operator_name
 
 %type <expr> prefix_expression
 %type <expr> postfix_expression
@@ -132,6 +134,7 @@
 %type <expr> program
 %type <expr> global_decl_list
 %type <expr> global_decl_list_core
+%type <expr> global_statement
 %type <expr> statement
 
 %type <expr> declaration
@@ -167,10 +170,47 @@ global_decl_list:
 //
 // ;
 global_decl_list_core:
-      statement
+      global_statement
         { $$ = create_statement_list(expressionAST, $1); }
-    | global_decl_list_core separator statement
+    | global_decl_list_core separator global_statement
         { $$ = append_statement(expressionAST, $1, $3); }
+;
+
+global_statement:
+      statement
+        { $$ = $1; }
+    | infix_operator_declaration
+        { $$ = nullptr; }
+;
+
+infix_operator_declaration:
+    KW_INFIX KW_OPERATOR operator_name ':' IDENTIFIER
+        {
+            const auto& spelling = $3->text;
+            const auto group = operators::builtInPrecedenceGroup($5->text);
+            if (!group) {
+                const std::string message = "unknown built-in precedence group '" + $5->text + "'";
+                report_parse_error(@5, message.c_str());
+                YYERROR;
+            }
+            if (operators::infixPrecedence(spelling) != operators::Precedence::Unclassified) {
+                const std::string message = "cannot redeclare built-in infix operator '" + spelling + "'";
+                report_parse_error(@3, message.c_str());
+                YYERROR;
+            }
+            if (!expressionAST.infixOperatorDeclarations.emplace(spelling, *group).second) {
+                const std::string message = "duplicate declaration of infix operator '" + spelling + "'";
+                report_parse_error(@3, message.c_str());
+                YYERROR;
+            }
+        }
+;
+
+operator_name:
+      INFIX_OPERATOR
+    | PREFIX_OPERATOR
+    | POSTFIX_OPERATOR
+    | POSTFIX_EXCLAMATION
 ;
 
 newline_list_opt:
@@ -662,11 +702,10 @@ bool fold_pending_expressions()
 {
     for (ast::Expr* sequence : expressionAST.pendingSequences) {
         const ast::Expr* conflictingOperator = nullptr;
-        ast::Expr* folded = fold_expression_sequence(expressionAST, sequence, conflictingOperator);
+        std::string message;
+        ast::Expr* folded = fold_expression_sequence(expressionAST, sequence, conflictingOperator, message);
 
         if (!folded) {
-            const std::string message = "operator '" + conflictingOperator->text +
-                "' cannot be chained at this precedence without parentheses";
             report_parse_error(conflictingOperator->location, message.c_str());
             return false;
         }
