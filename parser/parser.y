@@ -85,69 +85,9 @@
 
     // OPERATORS
 
-    // AssignmentPrecedence: right associative
-%right <token>
-    EQUAL INFIX_MULT_ASSIGN INFIX_OVERFLOW_MULT_ASSIGN
-    INFIX_DIV_ASSIGN INFIX_MOD_ASSIGN INFIX_PLUS_ASSIGN
-    INFIX_OVERFLOW_PLUS_ASSIGN INFIX_MINUS_ASSIGN INFIX_OVERFLOW_MINUS_ASSIGN
-    INFIX_LSHIFT_ASSIGN INFIX_OVERFLOW_LSHIFT_ASSIGN
-    INFIX_RSHIFT_ASSIGN INFIX_OVERFLOW_RSHIFT_ASSIGN
-    INFIX_BITWISE_AND_ASSIGN INFIX_BITWISE_XOR_ASSIGN INFIX_BITWISE_OR_ASSIGN
-    INFIX_POINTWISE_BITWISE_AND_ASSIGN INFIX_POINTWISE_BITWISE_OR_ASSIGN
-    INFIX_POINTWISE_BITWISE_XOR_ASSIGN
-
-    // FunctionArrowPrecedence: right associative
-%right <token> ARROW
-
-    // TernaryPrecedence: right associative
-%right <token> INFIX_QUESTION
-
-    // DefaultPrecedence: no associativity
-%nonassoc <token> INFIX_CUSTOM
-
-    // LogicalDisjunctionPrecedence: left associative
-%left <token> INFIX_LOGICAL_OR INFIX_POINTWISE_BITWISE_OR INFIX_POINTWISE_BITWISE_XOR
-
-    // LogicalConjunctionPrecedence: left associative
-%left <token> INFIX_LOGICAL_AND INFIX_POINTWISE_BITWISE_AND
-
-    // ComparisonPrecedence: non-associative
-%nonassoc <token>
-    INFIX_LESS INFIX_LESS_EQUAL INFIX_GREATER INFIX_GREATER_EQUAL
-    INFIX_EQUALITY INFIX_INEQUALITY INFIX_IDENTICAL INFIX_NOT_IDENTICAL
-    INFIX_PATTERN_MATCH INFIX_POINTWISE_LESS INFIX_POINTWISE_LESS_EQUAL
-    INFIX_POINTWISE_GREATER INFIX_POINTWISE_GREATER_EQUAL
-    INFIX_POINTWISE_EQUAL INFIX_POINTWISE_NOT_EQUAL
-
-    // NilCoalescingPrecedence: right associative
-%right <token> INFIX_NIL_COALESCING
-
-    // CastingPrecedence: AS / IS are keyword tokens
-%nonassoc AS IS
-
-    // RangeFormationPrecedence: non-associative
-%nonassoc <token> INFIX_HALF_OPEN_RANGE INFIX_CLOSED_RANGE
-
-    // AdditionPrecedence: left associative
-%left <token>
-    INFIX_PLUS INFIX_MINUS INFIX_BITWISE_OR INFIX_BITWISE_XOR
-    INFIX_OVERFLOW_PLUS INFIX_OVERFLOW_MINUS
-
-    // MultiplicationPrecedence: left associative
-%left <token> INFIX_MULT INFIX_DIV INFIX_MOD INFIX_BITWISE_AND INFIX_OVERFLOW_MULT
-
-    // BitwiseShiftPrecedence: non-associative
-%nonassoc <token> INFIX_LSHIFT INFIX_RSHIFT INFIX_OVERFLOW_LSHIFT INFIX_OVERFLOW_RSHIFT
-
-    // Prefix/postfix forms
-%token <token> PREFIX_PLUS PREFIX_MINUS PREFIX_EXCLAMATION PREFIX_BITWISE_NOT
-%token <token> PREFIX_BITWISE_AND PREFIX_CLOSED_RANGE PREFIX_HALF_OPEN_RANGE
-%token <token> PREFIX_INCREMENT PREFIX_DECREMENT PREFIX_CUSTOM
-
-%token <token> POSTFIX_EXCLAMATION POSTFIX_QUESTION POSTFIX_CLOSED_RANGE
-%token <token> POSTFIX_INCREMENT POSTFIX_DECREMENT POSTFIX_CUSTOM
-
-    // специальные символы: '=', '?', '->'
+%token <token> INFIX_OPERATOR PREFIX_OPERATOR POSTFIX_OPERATOR
+%token <token> EQUAL ARROW INFIX_QUESTION POSTFIX_QUESTION POSTFIX_EXCLAMATION
+%token AS IS
     
 %token NEWLINE
 
@@ -160,7 +100,8 @@
     extern ast::Context expressionAST;
 }
 
-%type <expr> expression
+%type <expr> expression sequence_expression ternary_operator cast_operator
+%type <token> infix_operator postfix_operator
 
 %type <expr> prefix_expression
 %type <expr> postfix_expression
