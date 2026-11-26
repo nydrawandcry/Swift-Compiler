@@ -12,7 +12,8 @@
 #include <utility>
 #include <cstdarg>
 #include <stdexcept>
-#include "../utils/Buffer/Buffer.h"
+#include "utils/Buffer/Buffer.h"
+#include "utils/InfixOperators.h"
 #include "parser.hpp"
 
 Buffer buffer;
@@ -32,11 +33,6 @@ struct StringContext {
     int rawDelimiterLength;
     bool multilineFirstLine;
 };
-// структура для хранения оператора и инфы о нем
-struct Operator {
-    OperatorType type;
-    std::string str;
-};
 // считать начало файла разделителем
 static bool prevWhitespace = true;
 // был ли разделитель перед текущей лексемой
@@ -46,7 +42,7 @@ static bool operatorLeftWhitespace = true;
 static int operatorLine = 1;
 static SourceLocation operatorLocation{};
 
-static Operator currentOperator{OperatorType::INFIX, ""};
+static std::string currentOperator;
 //контейнер данных о предыдущих строках
 std::vector<StringContext> stringContexts;
 
@@ -112,7 +108,7 @@ void beginString(int hashCount, bool isMultiline);
 void endString();
 // очистить данные при завершении/прерывании сканирования
 void clearStringContexts();
-// определить тип оператора, напечатать токен и вернуть его парсеру
+// определить форму оператора и вернуть токен парсеру
 int emitOperatorToken(bool rightWhitespace, bool followedByDot = false);
 //чтение целых чисел (для парсера)
 int readInteger(const char* text, int base, int skip);
@@ -1086,11 +1082,10 @@ Character {
     }
     else
     {
-        currentOperator.str.assign(yytext, yyleng);
+        currentOperator.assign(yytext, yyleng);
         operatorLeftWhitespace = currentLeftWhitespace;
         operatorLine = yylineno;
         operatorLocation = yylloc;
-        //printf("OPERATOR: %s\n", yytext);
         yy_push_state(AFTER_OPERATOR);
     }
 }
@@ -1516,163 +1511,46 @@ void clearStringContexts()
 
 int emitOperatorToken(bool rightWhitespace, bool followedByDot)
 {
+    const std::string op = std::move(currentOperator);
+    OperatorType fixity = OperatorType::INFIX;
+
     // делаем исключения для одиночных !, ? и следующей вплотную точки
-    if (!operatorLeftWhitespace &&
-        (currentOperator.str == "!" ||
-         currentOperator.str == "?" ||
-         followedByDot)) {
-        currentOperator.type = OperatorType::POSTFIX;
-    }
-    else if (operatorLeftWhitespace == rightWhitespace) {
-        currentOperator.type = OperatorType::INFIX;
-    }
-    else if (operatorLeftWhitespace) {
-        currentOperator.type = OperatorType::PREFIX;
-    }
-    else {
-        currentOperator.type = OperatorType::POSTFIX;
+    if (!operatorLeftWhitespace && (op == "!" || op == "?" || followedByDot)) {
+        fixity = OperatorType::POSTFIX;
+    } else if (operatorLeftWhitespace != rightWhitespace) {
+        fixity = operatorLeftWhitespace ? OperatorType::PREFIX : OperatorType::POSTFIX;
     }
 
-    const std::string op = currentOperator.str;
-    const char* tokenName = nullptr;
-    int tokenCode = LEX_ERROR;
-
-    if (op == "->") {
-        tokenName = "ARROW";
-        tokenCode = ARROW;
-    }
-
-    // только инфиксные
-    else if (op == "=" ||
-             op == "*=" || op == "&*=" || op == "/=" || op == "%=" ||
-             op == "+=" || op == "&+=" || op == "-=" || op == "&-=" ||
-             op == "<<=" || op == "&<<=" || op == ">>=" || op == "&>>=" ||
-             op == "&=" || op == "^=" || op == "|=" ||
-             op == ".&=" || op == ".|=" || op == ".^=") {
-        if (currentOperator.type != OperatorType::INFIX) {
+        if (fixity != OperatorType::INFIX &&
+            operators::infixPrecedence(op) == operators::Precedence::Assignment) {
             lexerError(
                 "Lexer error at line %d: assignment operator '%s' must be infix\n",
-                operatorLine,
-                op.c_str()
+                operatorLine, op.c_str()
             );
-            currentOperator.str.clear();
+            return LEX_ERROR;
+        }
+        if (op == "?" && fixity == OperatorType::PREFIX) {
+            lexerError("Lexer error at line %d: '?' cannot be used as a prefix operator\n", operatorLine);
             return LEX_ERROR;
         }
 
-        if (op == "=") {
-            tokenName = "EQUAL";
-            tokenCode = EQUAL;
-        }
-        else {
-            if (op == "*=")  { tokenName = "INFIX_MULT_ASSIGN"; tokenCode = INFIX_MULT_ASSIGN; }
-            if (op == "&*=") { tokenName = "INFIX_OVERFLOW_MULT_ASSIGN"; tokenCode = INFIX_OVERFLOW_MULT_ASSIGN; }
-            if (op == "/=")  { tokenName = "INFIX_DIV_ASSIGN"; tokenCode = INFIX_DIV_ASSIGN; }
-            if (op == "%=")  { tokenName = "INFIX_MOD_ASSIGN"; tokenCode = INFIX_MOD_ASSIGN; }
-            if (op == "+=")  { tokenName = "INFIX_PLUS_ASSIGN"; tokenCode = INFIX_PLUS_ASSIGN; }
-            if (op == "&+=") { tokenName = "INFIX_OVERFLOW_PLUS_ASSIGN"; tokenCode = INFIX_OVERFLOW_PLUS_ASSIGN; }
-            if (op == "-=")  { tokenName = "INFIX_MINUS_ASSIGN"; tokenCode = INFIX_MINUS_ASSIGN; }
-            if (op == "&-=") { tokenName = "INFIX_OVERFLOW_MINUS_ASSIGN"; tokenCode = INFIX_OVERFLOW_MINUS_ASSIGN; }
-            if (op == "<<=") { tokenName = "INFIX_LSHIFT_ASSIGN"; tokenCode = INFIX_LSHIFT_ASSIGN; }
-            if (op == "&<<="){ tokenName = "INFIX_OVERFLOW_LSHIFT_ASSIGN"; tokenCode = INFIX_OVERFLOW_LSHIFT_ASSIGN; }
-            if (op == ">>=") { tokenName = "INFIX_RSHIFT_ASSIGN"; tokenCode = INFIX_RSHIFT_ASSIGN; }
-            if (op == "&>>="){ tokenName = "INFIX_OVERFLOW_RSHIFT_ASSIGN"; tokenCode = INFIX_OVERFLOW_RSHIFT_ASSIGN; }
-            if (op == "&=")  { tokenName = "INFIX_BITWISE_AND_ASSIGN"; tokenCode = INFIX_BITWISE_AND_ASSIGN; }
-            if (op == "^=")  { tokenName = "INFIX_BITWISE_XOR_ASSIGN"; tokenCode = INFIX_BITWISE_XOR_ASSIGN; }
-            if (op == "|=")  { tokenName = "INFIX_BITWISE_OR_ASSIGN"; tokenCode = INFIX_BITWISE_OR_ASSIGN; }
-            if (op == ".&=") { tokenName = "INFIX_POINTWISE_BITWISE_AND_ASSIGN"; tokenCode = INFIX_POINTWISE_BITWISE_AND_ASSIGN; }
-            if (op == ".|=") { tokenName = "INFIX_POINTWISE_BITWISE_OR_ASSIGN"; tokenCode = INFIX_POINTWISE_BITWISE_OR_ASSIGN; }
-            if (op == ".^=") { tokenName = "INFIX_POINTWISE_BITWISE_XOR_ASSIGN"; tokenCode = INFIX_POINTWISE_BITWISE_XOR_ASSIGN; }
-        }
-    }
-    else if (op == "?") {
-        if (currentOperator.type == OperatorType::INFIX) {
-            tokenName = "INFIX_QUESTION";
-            tokenCode = INFIX_QUESTION;
-        }
-        else if (currentOperator.type == OperatorType::POSTFIX) {
-            tokenName = "POSTFIX_QUESTION";
-            tokenCode = POSTFIX_QUESTION;
-        }
-        else {
-            lexerError(
-                "Lexer error at line %d: '?' cannot be used as a prefix operator\n",
-                operatorLine
-            );
-            currentOperator.str.clear();
-            return LEX_ERROR;
-        }
-    }
-    else {
-        switch (currentOperator.type) {
-            case OperatorType::INFIX:
-                if      (op == "+")   { tokenName = "INFIX_PLUS"; tokenCode = INFIX_PLUS; }
-                else if (op == "-")   { tokenName = "INFIX_MINUS"; tokenCode = INFIX_MINUS; }
-                else if (op == "*")   { tokenName = "INFIX_MULT"; tokenCode = INFIX_MULT; }
-                else if (op == "/")   { tokenName = "INFIX_DIV"; tokenCode = INFIX_DIV; }
-                else if (op == "%")   { tokenName = "INFIX_MOD"; tokenCode = INFIX_MOD; }
-                else if (op == "&&")  { tokenName = "INFIX_LOGICAL_AND"; tokenCode = INFIX_LOGICAL_AND; }
-                else if (op == "||")  { tokenName = "INFIX_LOGICAL_OR"; tokenCode = INFIX_LOGICAL_OR; }
-                else if (op == "&")   { tokenName = "INFIX_BITWISE_AND"; tokenCode = INFIX_BITWISE_AND; }
-                else if (op == "|")   { tokenName = "INFIX_BITWISE_OR"; tokenCode = INFIX_BITWISE_OR; }
-                else if (op == "^")   { tokenName = "INFIX_BITWISE_XOR"; tokenCode = INFIX_BITWISE_XOR; }
-                else if (op == "&+")  { tokenName = "INFIX_OVERFLOW_PLUS"; tokenCode = INFIX_OVERFLOW_PLUS; }
-                else if (op == "&-")  { tokenName = "INFIX_OVERFLOW_MINUS"; tokenCode = INFIX_OVERFLOW_MINUS; }
-                else if (op == "&*")  { tokenName = "INFIX_OVERFLOW_MULT"; tokenCode = INFIX_OVERFLOW_MULT; }
-                else if (op == "<<")  { tokenName = "INFIX_LSHIFT"; tokenCode = INFIX_LSHIFT; }
-                else if (op == ">>")  { tokenName = "INFIX_RSHIFT"; tokenCode = INFIX_RSHIFT; }
-                else if (op == "&<<") { tokenName = "INFIX_OVERFLOW_LSHIFT"; tokenCode = INFIX_OVERFLOW_LSHIFT; }
-                else if (op == "&>>") { tokenName = "INFIX_OVERFLOW_RSHIFT"; tokenCode = INFIX_OVERFLOW_RSHIFT; }
-                else if (op == "...") { tokenName = "INFIX_CLOSED_RANGE"; tokenCode = INFIX_CLOSED_RANGE; }
-                else if (op == "..<") { tokenName = "INFIX_HALF_OPEN_RANGE"; tokenCode = INFIX_HALF_OPEN_RANGE; }
-                else if (op == "??")  { tokenName = "INFIX_NIL_COALESCING"; tokenCode = INFIX_NIL_COALESCING; }
-                else if (op == "<")   { tokenName = "INFIX_LESS"; tokenCode = INFIX_LESS; }
-                else if (op == "<=")  { tokenName = "INFIX_LESS_EQUAL"; tokenCode = INFIX_LESS_EQUAL; }
-                else if (op == ">")   { tokenName = "INFIX_GREATER"; tokenCode = INFIX_GREATER; }
-                else if (op == ">=")  { tokenName = "INFIX_GREATER_EQUAL"; tokenCode = INFIX_GREATER_EQUAL; }
-                else if (op == "==")  { tokenName = "INFIX_EQUALITY"; tokenCode = INFIX_EQUALITY; }
-                else if (op == "!=")  { tokenName = "INFIX_INEQUALITY"; tokenCode = INFIX_INEQUALITY; }
-                else if (op == "===") { tokenName = "INFIX_IDENTICAL"; tokenCode = INFIX_IDENTICAL; }
-                else if (op == "!==") { tokenName = "INFIX_NOT_IDENTICAL"; tokenCode = INFIX_NOT_IDENTICAL; }
-                else if (op == "~=")  { tokenName = "INFIX_PATTERN_MATCH"; tokenCode = INFIX_PATTERN_MATCH; }
-                else if (op == ".<")  { tokenName = "INFIX_POINTWISE_LESS"; tokenCode = INFIX_POINTWISE_LESS; }
-                else if (op == ".<=") { tokenName = "INFIX_POINTWISE_LESS_EQUAL"; tokenCode = INFIX_POINTWISE_LESS_EQUAL; }
-                else if (op == ".>")  { tokenName = "INFIX_POINTWISE_GREATER"; tokenCode = INFIX_POINTWISE_GREATER; }
-                else if (op == ".>=") { tokenName = "INFIX_POINTWISE_GREATER_EQUAL"; tokenCode = INFIX_POINTWISE_GREATER_EQUAL; }
-                else if (op == ".==") { tokenName = "INFIX_POINTWISE_EQUAL"; tokenCode = INFIX_POINTWISE_EQUAL; }
-                else if (op == ".!=") { tokenName = "INFIX_POINTWISE_NOT_EQUAL"; tokenCode = INFIX_POINTWISE_NOT_EQUAL; }
-                else if (op == ".&")  { tokenName = "INFIX_POINTWISE_BITWISE_AND"; tokenCode = INFIX_POINTWISE_BITWISE_AND; }
-                else if (op == ".|")  { tokenName = "INFIX_POINTWISE_BITWISE_OR"; tokenCode = INFIX_POINTWISE_BITWISE_OR; }
-                else if (op == ".^")  { tokenName = "INFIX_POINTWISE_BITWISE_XOR"; tokenCode = INFIX_POINTWISE_BITWISE_XOR; }
-                else                  { tokenName = "INFIX_CUSTOM"; tokenCode = INFIX_CUSTOM; }
-                break;
-
-            case OperatorType::PREFIX:
-                if      (op == "+")   { tokenName = "PREFIX_PLUS"; tokenCode = PREFIX_PLUS; }
-                else if (op == "-")   { tokenName = "PREFIX_MINUS"; tokenCode = PREFIX_MINUS; }
-                else if (op == "!")   { tokenName = "PREFIX_EXCLAMATION"; tokenCode = PREFIX_EXCLAMATION; }
-                else if (op == "~")   { tokenName = "PREFIX_BITWISE_NOT"; tokenCode = PREFIX_BITWISE_NOT; }
-                else if (op == "&")   { tokenName = "PREFIX_BITWISE_AND"; tokenCode = PREFIX_BITWISE_AND; }
-                else if (op == "...") { tokenName = "PREFIX_CLOSED_RANGE"; tokenCode = PREFIX_CLOSED_RANGE; }
-                else if (op == "..<") { tokenName = "PREFIX_HALF_OPEN_RANGE"; tokenCode = PREFIX_HALF_OPEN_RANGE; }
-                else                  { tokenName = "PREFIX_CUSTOM"; tokenCode = PREFIX_CUSTOM; }
-                break;
-
-            case OperatorType::POSTFIX:
-                if      (op == "!")   { tokenName = "POSTFIX_EXCLAMATION"; tokenCode = POSTFIX_EXCLAMATION; }
-                else if (op == "...") { tokenName = "POSTFIX_CLOSED_RANGE"; tokenCode = POSTFIX_CLOSED_RANGE; }
-                else if (op == "?")   { tokenName = "POSTFIX_QUESTION"; tokenCode = POSTFIX_QUESTION; }
-                else                  { tokenName = "POSTFIX_CUSTOM"; tokenCode = POSTFIX_CUSTOM; }
-                break;
-        }
-    }
-
-    if (tokenCode != LEX_ERROR) {
         yylval.token = makeValue(op);
-        printf("%s: %s\n", tokenName, op.c_str());
-    }
+        yylval.token->operatorType = fixity;
 
-    currentOperator.str.clear();
-    return tokenCode;
+        if (op == "->") return ARROW;
+        if (op == "=") return EQUAL;
+        if (op == "?") {
+            return fixity == OperatorType::POSTFIX ? POSTFIX_QUESTION : INFIX_QUESTION;
+    }
+        if (op == "!" && fixity == OperatorType::POSTFIX) return POSTFIX_EXCLAMATION;
+
+        switch (fixity) {
+            case OperatorType::PREFIX:  return PREFIX_OPERATOR;
+            case OperatorType::POSTFIX: return POSTFIX_OPERATOR;
+            case OperatorType::INFIX:   return INFIX_OPERATOR;
+        }
+        return LEX_ERROR;
+    }
 }
 
 int readInteger(const char* text, int base, int skip) {
