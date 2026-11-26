@@ -18,14 +18,13 @@
 
    static ast::Expr* create_cast_operator(const char* spelling, SourceLocation location)
    {
-        const TokenValue token{spelling};
-        return expressionAST.literal(ast::ExprKind::InfixOperator, &token, location);
+        const std::string text{spelling};
+        return expressionAST.literal(ast::ExprKind::InfixOperator, &text, location);
    }
 
 %}
 
 %code requires {
-    #include "utils/TokenValue.h"
     #include "utils/AST/Expr.h"
 
     #define YYLTYPE SourceLocation
@@ -34,7 +33,7 @@
 }
 
 %union {
-    TokenValue* token;
+    std::string* text;
     ast::Expr* expr;
 }
 
@@ -59,8 +58,8 @@
 %token DEFER DO CATCH THROW SWITCH CASE DEFAULT
 
     // EXPRESSIONS AND TYPES
-%token <token> IDENTIFIER
-%token <token> TYPE
+%token <text> IDENTIFIER
+%token <text> TYPE
 
     // LITERAL KEYWORDS
 %token TRUE FALSE NIL
@@ -79,30 +78,25 @@
 /* -~-~-~-~-~-~-~-~-~-~- LITERALS -~-~-~-~-~-~-~-~-~-~- */
 
     // NUMERIC LITERALS
-%token <token> INTEGER_LITERAL
-%token <token> FLOATING_POINT_LITERAL
-%token <token> BOOLEAN_LITERAL
-%token <token> NIL_LITERAL
+%token <text> INTEGER_LITERAL
+%token <text> FLOATING_POINT_LITERAL
+%token <text> BOOLEAN_LITERAL
+%token <text> NIL_LITERAL
 
     // STRINGS
-%token <token> STRING_LITERAL
-%token <token> RAW_STRING_LITERAL
-%token <token> MULTILINE_STRING_LITERAL
-%token <token> RAW_MULTILINE_STRING_LITERAL
-%token <token> INTERPOLATION_START
-%token <token> INTERPOLATION_END
+%token <text> STRING_LITERAL
+%token <text> RAW_STRING_LITERAL
+%token <text> MULTILINE_STRING_LITERAL
+%token <text> RAW_MULTILINE_STRING_LITERAL
 
     // OPERATORS
 
-%token <token> INFIX_OPERATOR PREFIX_OPERATOR POSTFIX_OPERATOR
-%token <token> EQUAL ARROW INFIX_QUESTION POSTFIX_QUESTION POSTFIX_EXCLAMATION
+%token <text> INFIX_OPERATOR PREFIX_OPERATOR POSTFIX_OPERATOR
+%token <text> EQUAL ARROW INFIX_QUESTION POSTFIX_QUESTION POSTFIX_EXCLAMATION
 %token AS IS
     
 %token NEWLINE
 
-    // Для конструкций, которые лексер поддерживает, а парсер еще нет
-//пока не используется
-%token <token> UNSUPPORTED_KEYWORD
 %token LEX_ERROR
 
 %code provides {
@@ -111,7 +105,7 @@
 }
 
 %type <expr> expression sequence_expression ternary_operator cast_operator
-%type <token> infix_operator postfix_operator
+%type <text> infix_operator postfix_operator
 
 %type <expr> prefix_expression
 %type <expr> postfix_expression
@@ -373,8 +367,6 @@ type_identifier:
             $$ = $1;
             $$->text += ".";
             $$->text += $3->text;
-            $$->value.text = $$->text;
-            $$->value.dataType = DataType::Unknown;
         }
 ;
 

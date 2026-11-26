@@ -5,7 +5,7 @@
 ast::Expr* create_expr(
     ast::Context& context,
     ast::ExprKind kind,
-    TokenValue* token
+    const std::string* text
 );
 
 ast::Expr* create_program(
@@ -32,20 +32,20 @@ ast::Expr* create_un_expr(
     ast::Context& context,
     ast::ExprKind kind,
     ast::Expr* expression,
-    TokenValue* operatorToken
+    const std::string* operatorText
 );
 
 ast::Expr* create_infix_expr(
     ast::Context& context,
     ast::Expr* left,
-    TokenValue* operatorToken,
+    const std::string* operatorText,
     ast::Expr* right
 );
 
 ast::Expr* create_ternary_expr(
     ast::Context& context,
     ast::Expr* condition,
-    TokenValue* questionToken,
+    const std::string* questionText,
     ast::Expr* trueExpression,
     ast::Expr* falseExpression
 );
@@ -80,7 +80,7 @@ ast::Expr* append_argument(
 
 ast::Expr* create_variable_declaration(
     ast::Context& context,
-    TokenValue* name,
+    const std::string* name,
     bool isConstant,
     ast::Expr* declaredType,
     ast::Expr* initialValue
@@ -88,7 +88,7 @@ ast::Expr* create_variable_declaration(
 
 ast::Expr* create_named_argument(
     ast::Context& context,
-    TokenValue* name,
+    const std::string* name,
     ast::Expr* expression
 );
 

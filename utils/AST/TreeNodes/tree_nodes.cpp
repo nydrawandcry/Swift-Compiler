@@ -98,24 +98,20 @@ namespace
 ast::Expr* create_expr(
     ast::Context& context,
     ast::ExprKind kind,
-    TokenValue* token
+    const std::string* text
 ) {
     ast::Expr* node = context.make(
         kind,
         empty_location(),
-        token ? token->text : ""
+        text ? *text : ""
     );
-
-    if (token) {
-        node->value = *token;
-    }
 
     return node;
 }
 
 ast::Expr* create_variable_declaration(
     ast::Context& context,
-    TokenValue* name,
+    const std::string* name,
     bool isConstant,
     ast::Expr* declaredType,
     ast::Expr* initialValue
@@ -129,10 +125,8 @@ ast::Expr* create_variable_declaration(
     ast::Expr* node = context.make(
         kind,
         empty_location(),
-        name->text
+        *name
     );
-
-    node->value = *name;
 
     node->children.push_back(declaredType);
     node->children.push_back(initialValue);
@@ -205,18 +199,14 @@ ast::Expr* create_un_expr(
     ast::Context& context,
     ast::ExprKind kind,
     ast::Expr* expression,
-    TokenValue* operatorToken
+    const std::string* operatorText
 ) {
     ast::Expr* node = context.unary(
         kind,
-        operatorToken ? operatorToken->text : "",
+        operatorText ? *operatorText : "",
         expression,
         expression_location(expression)
     );
-
-    if (operatorToken) {
-        node->value = *operatorToken;
-    }
 
     return node;
 }
@@ -224,13 +214,13 @@ ast::Expr* create_un_expr(
 ast::Expr* create_infix_expr(
     ast::Context& context,
     ast::Expr* left,
-    TokenValue* operatorToken,
+    const std::string* operatorText,
     ast::Expr* right
 ) {
     ast::Expr* node = create_expr(
         context,
         ast::ExprKind::InfixOperator,
-        operatorToken
+        operatorText
     );
 
     node->location = expression_location(left);
@@ -249,14 +239,14 @@ ast::Expr* create_infix_expr(
 ast::Expr* create_ternary_expr(
     ast::Context& context,
     ast::Expr* condition,
-    TokenValue* questionToken,
+    const std::string* questionText,
     ast::Expr* trueExpression,
     ast::Expr* falseExpression
 ) {
     ast::Expr* node = create_expr(
         context,
         ast::ExprKind::Ternary,
-        questionToken
+        questionText
     );
 
     node->location = expression_location(condition);
@@ -301,9 +291,9 @@ ast::Expr* fold_expression_sequence(
         ast::Expr* left = operands.back();
 
         if (op->kind == ast::ExprKind::Ternary) {
-            operands.back() = create_ternary_expr(context, left, &op->value, op->children.front(), right);
+            operands.back() = create_ternary_expr(context, left, &op->text, op->children.front(), right);
         } else {
-            operands.back() = create_infix_expr(context, left, &op->value, right);
+            operands.back() = create_infix_expr(context, left, &op->text, right);
         }
     };
 
@@ -398,13 +388,13 @@ ast::Expr* append_argument(
 
 ast::Expr* create_named_argument(
     ast::Context& context,
-    TokenValue* name,
+    const std::string* name,
     ast::Expr* expression
 ) {
     ast::Expr* argument = context.make(
         ast::ExprKind::Argument,
         expression_location(expression),
-        name ? name->text : ""
+        name ? *name : ""
     );
 
     argument->children.push_back(expression);

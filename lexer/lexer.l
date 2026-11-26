@@ -33,6 +33,11 @@ struct StringContext {
     int rawDelimiterLength;
     bool multilineFirstLine;
 };
+enum class OperatorType {
+    INFIX,
+    PREFIX,
+    POSTFIX
+};
 // считать начало файла разделителем
 static bool prevWhitespace = true;
 // был ли разделитель перед текущей лексемой
@@ -46,13 +51,6 @@ static std::string currentOperator;
 //контейнер данных о предыдущих строках
 std::vector<StringContext> stringContexts;
 
-// для вывода чисел
-std::string digitBuffer = "";
-
-int intBuf = 0;
-float floatBuf = 0;
-double doubleBuf = 0;
-
 // ДЛЯ ПАРСЕРА И ИХ СВЯЗИ (я пока ничего не понимаю)
 static int lexerLine = 1;
 static int lexerColumn = 1;
@@ -62,7 +60,7 @@ static bool matchAfterCR = false;
 
 static SourceLocation currentMatch{1, 1, 1, 1};
 //данные токена (хранение до завершения программы)
-static std::vector<std::unique_ptr<TokenValue>> tokenValues;
+static std::vector<std::unique_ptr<std::string>> tokenValues;
 //счетчик ошибок
 int lexerErrors = 0;
 
@@ -77,7 +75,7 @@ void recordMatch(const char* text, int length);
 //
 void rewindPosition(const char* text, int length);
 //создание данных токена
-TokenValue* makeValue(const std::string& text);
+std::string* makeValue(const std::string& text);
 //
 int finishInput();
 
@@ -247,17 +245,17 @@ FLOAT_HEXADECIMAL 0x{HEX_DIGITS}(\.{HEX_DIGITS})?{HEX_EXPONENT}
             /* LITERAL KEYWORDS */
 
 "true" {
-    yylval.token = makeValue(yytext);
+    yylval.text = makeValue(yytext);
 
     return BOOLEAN_LITERAL; //в парсере используется такой литерал
 }
 "false" {
-    yylval.token = makeValue(yytext);
+    yylval.text = makeValue(yytext);
 
     return BOOLEAN_LITERAL;
 }
 "nil" {
-    yylval.token = makeValue(yytext);
+    yylval.text = makeValue(yytext);
 
     return NIL_LITERAL; //аналогично ( TODO доработать)
 }
@@ -329,121 +327,89 @@ _ {
         /* TYPES */
 
 Int {
-    yylval.token = makeValue(yytext);
-    yylval.token->dataType = DataType::Int;
-
+    yylval.text = makeValue(yytext);
     return TYPE;
 }
 
 Int8 {
-    yylval.token = makeValue(yytext);
-    yylval.token->dataType = DataType::Int8;
-
+    yylval.text = makeValue(yytext);
     return TYPE;
 }
 
 Int16 {
-    yylval.token = makeValue(yytext);
-    yylval.token->dataType = DataType::Int16;
-
+    yylval.text = makeValue(yytext);
     return TYPE;
 }
 
 Int32 {
-    yylval.token = makeValue(yytext);
-    yylval.token->dataType = DataType::Int32;
-
+    yylval.text = makeValue(yytext);
     return TYPE;
 }
 
 Int64 {
-    yylval.token = makeValue(yytext);
-    yylval.token->dataType = DataType::Int64;
-
+    yylval.text = makeValue(yytext);
     return TYPE;
 }
 
 UInt {
-    yylval.token = makeValue(yytext);
-    yylval.token->dataType = DataType::UInt;
-
+    yylval.text = makeValue(yytext);
     return TYPE;
 }
 
 UInt8 {
-    yylval.token = makeValue(yytext);
-    yylval.token->dataType = DataType::UInt8;
-
+    yylval.text = makeValue(yytext);
     return TYPE;
 }
 
 UInt16 {
-    yylval.token = makeValue(yytext);
-    yylval.token->dataType = DataType::UInt16;
-
+    yylval.text = makeValue(yytext);
     return TYPE;
 }
 
 UInt32 {
-    yylval.token = makeValue(yytext);
-    yylval.token->dataType = DataType::UInt32;
-
+    yylval.text = makeValue(yytext);
     return TYPE;
 }
 
 UInt64 {
-    yylval.token = makeValue(yytext);
-    yylval.token->dataType = DataType::UInt64;
-
+    yylval.text = makeValue(yytext);
     return TYPE;
 }
 
 Float {
-    yylval.token = makeValue(yytext);
-    yylval.token->dataType = DataType::Float;
-
+    yylval.text = makeValue(yytext);
     return TYPE;
 }
 
 Float80 {
-    yylval.token = makeValue(yytext);
-    yylval.token->dataType = DataType::Float80;
-
+    yylval.text = makeValue(yytext);
     return TYPE;
 }
 
 Double {
-    yylval.token = makeValue(yytext);
-    yylval.token->dataType = DataType::Double;
-
+    yylval.text = makeValue(yytext);
     return TYPE;
 }
 
 Bool {
-    yylval.token = makeValue(yytext);
-    yylval.token->dataType = DataType::Bool;
-
+    yylval.text = makeValue(yytext);
     return TYPE;
 }
 
 String {
-    yylval.token = makeValue(yytext);
-    yylval.token->dataType = DataType::String;
-
+    yylval.text = makeValue(yytext);
     return TYPE;
 }
 
 Character {
-    yylval.token = makeValue(yytext);
-    yylval.token->dataType = DataType::Character;
-
+    yylval.text = makeValue(yytext);
     return TYPE;
 }
 
         /* IDENTIFIERS */
 
 [A-Za-z_][A-Za-z_0-9]* { /* todo пока вот так по-простому */
-    yylval.token = makeValue(yytext);
+    yylval.text = makeValue(yytext);
     return IDENTIFIER;
 }
 
@@ -1261,7 +1227,7 @@ void recordMatch(const char* text, int length) {
     yylloc = currentMatch;
 
     // у нового токена пока нет доп данных
-    yylval.token = nullptr;
+    yylval.text = nullptr;
 }
 
 void rewindPosition(const char* text, int length) {
@@ -1278,12 +1244,10 @@ void rewindPosition(const char* text, int length) {
     yylloc = currentMatch;
 }
 
-TokenValue* makeValue(const std::string& text) {
-    auto value = std::make_unique<TokenValue>();
+std::string* makeValue(const std::string& text) {
+    auto value = std::make_unique<std::string>(text);
 
-    value->text = text;
-
-    TokenValue* result = value.get();
+    std::string* result = value.get();
 
     tokenValues.push_back(std::move(value));
 
@@ -1291,7 +1255,7 @@ TokenValue* makeValue(const std::string& text) {
 }
 
 int finishInput() {
-    yylval.token = nullptr;
+    yylval.text = nullptr;
 
     yylloc = {
         lexerLine,
@@ -1534,9 +1498,7 @@ int emitOperatorToken(bool rightWhitespace, bool followedByDot)
         return LEX_ERROR;
     }
 
-    yylval.token = makeValue(op);
-    yylval.token->operatorType = fixity;
-
+    yylval.text = makeValue(op);
     if (op == "->") return ARROW;
     if (op == "=") return EQUAL;
     if (op == "?") {
@@ -1558,13 +1520,9 @@ int readInteger(const char* text, int base, int skip) {
     deleteUnderscores(text + skip, digits);
 
     try {
-        unsigned long long value =
-            std::stoull(digits, nullptr, base);
+        std::stoull(digits, nullptr, base);
 
-        yylval.token = makeValue(text);
-
-        yylval.token->integerValue = value;
-        yylval.token->numberBase = base;
+        yylval.text = makeValue(text);
 
         return INTEGER_LITERAL;
     }
@@ -1592,12 +1550,9 @@ int readFloating(const char* text, int base) {
     deleteUnderscores(text, digits);
 
     try {
-        double value = std::stod(digits);
+        std::stod(digits);
 
-        yylval.token = makeValue(text);
-
-        yylval.token->floatingValue = value;
-        yylval.token->numberBase = base;
+        yylval.text = makeValue(text);
 
         return FLOATING_POINT_LITERAL;
     }

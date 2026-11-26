@@ -1,7 +1,5 @@
 #pragma once
 
-#include "utils/TokenValue.h"
-
 #include <iomanip>
 #include <memory>
 #include <ostream>
@@ -9,6 +7,13 @@
 #include <string>
 #include <utility>
 #include <vector>
+
+struct SourceLocation {
+    int first_line;
+    int first_column;
+    int last_line;
+    int last_column;
+};
 
 namespace ast
 {
@@ -51,9 +56,6 @@ namespace ast
         //имя, текст операции, содержимое аргумента и тд
         std::string text;
 
-        //данные литерала: числовое значение и тд
-        TokenValue value;
-
         std::vector<Expr*> children;
     };
 
@@ -85,14 +87,10 @@ namespace ast
 
         Expr* literal(
             ExprKind kind,
-            const TokenValue* token,
+            const std::string* text,
             SourceLocation location
         ) {
-            Expr* node = make(kind, location, token->text);
-
-            node->value = *token;
-
-            return node;
+            return make(kind, location, text ? *text : "");
         }
 
         Expr* unary(
