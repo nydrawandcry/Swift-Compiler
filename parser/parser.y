@@ -4,6 +4,7 @@
   #include <stdio.h>
   #include <stdlib.h>
   #include <iostream>
+  #include <utility>
   #include "utils/AST/Expr.h"
   #include "utils/AST/TreeNodes/tree_nodes.hpp"
 
@@ -106,6 +107,7 @@
 
 %code provides {
     extern ast::Context expressionAST;
+    bool fold_pending_expressions();
 }
 
 %type <expr> expression sequence_expression ternary_operator cast_operator
@@ -521,14 +523,9 @@ catch_clause:
 expression:
       sequence_expression
       {
-          const ast::Expr* conflictingOperator = nullptr;
-
-          $$ = fold_expression_sequence(expressionAST, $1, conflictingOperator);
-          if (!$$) {
-              const std::string message = "operator '" + conflictingOperator->text +
-              "' cannot be chained at this precedence without parentheses";
-              report_parse_error(conflictingOperator->location, message.c_str());
-              YYERROR;
+          $$ = $1;
+          if($$->kind == ast::ExprKind::Sequence) {
+            expressionAST.pendingSequences.push_back($$);
           }
       }
 ;
@@ -667,4 +664,27 @@ static void report_parse_error(SourceLocation location, const char* message)
 void yyerror(const char* message)
 {
     report_parse_error(yylloc, message);
+}
+
+bool fold_pending_expressions()
+{
+    for (ast::Expr* sequence : expressionAST.pendingSequences) {
+        const ast::Expr* conflictingOperator = nullptr;
+        ast::Expr* folded = fold_expression_sequence(expressionAST, sequence, conflictingOperator);
+
+        if (!folded) {
+            const std::string message = "operator '" + conflictingOperator->text +
+                "' cannot be chained at this precedence without parentheses";
+            report_parse_error(conflictingOperator->location, message.c_str());
+            return false;
+        }
+
+        if (folded != sequence) {
+            //кладем готовый узел по тому же адресу где лежала цепочка
+            *sequence = std::move(*folded);
+        }
+    }
+
+    expressionAST.pendingSequences.clear();
+    return true;
 }

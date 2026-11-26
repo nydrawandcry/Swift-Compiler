@@ -62,6 +62,9 @@ namespace ast
         //завершённые выражения из объявлений, условий, ретурнов и тд
         std::vector<Expr*> roots;
 
+        //цепочки выражений в порядке завершения разбора выражений
+        std::vector<Expr*> pendingSequences;
+
         Expr* make(
             ExprKind kind,
             SourceLocation location,
@@ -161,6 +164,7 @@ namespace ast
         void clear()
         {
             roots.clear();
+            pendingSequences.clear();
             nodes.clear();
         }
 

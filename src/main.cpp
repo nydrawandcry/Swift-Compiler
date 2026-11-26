@@ -1,11 +1,9 @@
 #include <stdio.h>
 
+#include "parser.hpp"
 #include "utils/AST/TreeNodes/tree_nodes.hpp"
 
 extern FILE *yyin;
-extern int yyparse(void);
-
-extern ast::Context expressionAST;
 extern int lexerErrors;
 extern int parseErrors;
 
@@ -30,6 +28,11 @@ int main(int argc, char *argv[])
     fclose(yyin);
 
     if (parseResult != 0 || parseErrors != 0 || lexerErrors != 0)
+    {
+        return 1;
+    }
+
+    if (!fold_pending_expressions())
     {
         return 1;
     }
