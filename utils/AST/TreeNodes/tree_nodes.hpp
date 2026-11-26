@@ -50,6 +50,12 @@ ast::Expr* create_ternary_expr(
     ast::Expr* falseExpression
 );
 
+ast::Expr* fold_expression_sequence(
+    ast::Context& context,
+    ast::Expr* expression,
+    const ast::Expr*& conflictingOperator
+);
+
 ast::Expr* create_group_expr(
     ast::Context& context,
     ast::Expr* expression

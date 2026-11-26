@@ -136,6 +136,9 @@ namespace ast
             Expr* next,
             SourceLocation location
         ) {
+            if (sequenceNode->kind != ExprKind::Sequence) {
+                return sequence(sequenceNode, op, next, location);
+            }
             sequenceNode->children.push_back(op);
             sequenceNode->children.push_back(next);
 

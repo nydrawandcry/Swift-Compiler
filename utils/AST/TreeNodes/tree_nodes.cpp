@@ -1,4 +1,5 @@
 #include "./tree_nodes.hpp"
+#include "utils/InfixOperators.h"
 
 #include <cstdint>
 #include <iostream>
@@ -270,6 +271,79 @@ ast::Expr* create_ternary_expr(
     node->children.push_back(falseExpression);
 
     return node;
+}
+
+//хуятина строит дерево из списка операндов (с корректными приоритетами)
+//correct_precedence у гришечки переставлял узлы готового дерева, и делал это не совсем правильно
+ast::Expr* fold_expression_sequence(
+    ast::Context& context,
+    ast::Expr* expression,
+    const ast::Expr*& conflictingOperator
+) {
+    if (expression->kind != ast::ExprKind::Sequence) {
+        return expression;
+    }
+
+    struct PendingOperator {
+        ast::Expr* node;
+        operators::Precedence precedence;
+    };
+
+    std::vector<PendingOperator> pendingOperators;
+    std::vector<ast::Expr*> operands{expression->children.front()};
+
+    const auto reduce = [&] {
+        ast::Expr* op = pendingOperators.back().node;
+        pendingOperators.pop_back();
+
+        ast::Expr* right = operands.back();
+        operands.pop_back();
+        ast::Expr* left = operands.back();
+
+        if (op->kind == ast::ExprKind::Ternary) {
+            operands.back() = create_ternary_expr(context, left, &op->value, op->children.front(), right);
+        } else {
+            operands.back() = create_infix_expr(context, left, &op->value, right);
+        }
+    };
+
+    for (std::size_t i = 1; i < expression->children.size(); i += 2) {
+        ast::Expr* op = expression->children[i];
+        const auto precedence = operators::infixPrecedence(op->text);
+
+        while (!pendingOperators.empty()) {
+            const auto previous = pendingOperators.back().precedence;
+
+            //правый операнд у операции "приведение типа" заканчивается на типе,
+                //который "поглощается" грамматикой
+            if (previous != operators::Precedence::Casting) {
+                if (previous < precedence) {
+                    break;
+                }
+                if (previous == precedence) {
+                    const auto associativity = operators::associativity(precedence);
+                    if (associativity == operators::Associativity::Right) {
+                        break;
+                    }
+                    if (associativity == operators::Associativity::None) {
+                        conflictingOperator = op;
+                        return nullptr;
+                    }
+                }
+            }
+
+            reduce();
+        }
+
+        pendingOperators.push_back({op, precedence});
+        operands.push_back(expression->children[i + 1]);
+    }
+
+    while (!pendingOperators.empty()) {
+        reduce();
+    }
+
+    return operands.back();
 }
 
 ast::Expr* create_group_expr(
