@@ -77,8 +77,6 @@ void rewindPosition(const char* text, int length);
 //создание данных токена
 std::string* makeValue(const std::string& text);
 //
-int finishInput();
-
 //остальные функции
 
 // функция для удаления нижнего подчеркивания
