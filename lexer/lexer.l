@@ -1254,19 +1254,6 @@ std::string* makeValue(const std::string& text) {
     return result;
 }
 
-int finishInput() {
-    yylval.text = nullptr;
-
-    yylloc = {
-        lexerLine,
-        lexerColumn,
-        lexerLine,
-        lexerColumn
-    };
-
-    return 0;
-}
-
     /* ОСТАЛЬНЫЕ ФУНКЦИИ */
 
 void deleteUnderscores(const char* source, std::string& str)
