@@ -107,7 +107,7 @@
 
 %type <expr> expression sequence_expression ternary_operator cast_operator
 %type <text> infix_operator postfix_operator
-%type <token> operator_name
+%type <text> operator_name
 
 %type <expr> prefix_expression
 %type <expr> postfix_expression
@@ -186,10 +186,12 @@ global_statement:
 infix_operator_declaration:
     KW_INFIX KW_OPERATOR operator_name ':' IDENTIFIER
         {
-            const auto& spelling = $3->text;
-            const auto group = operators::builtInPrecedenceGroup($5->text);
+            const auto& spelling = *$3;
+            const auto& groupName = *$5;
+            const auto group = operators::builtInPrecedenceGroup(groupName);
+
             if (!group) {
-                const std::string message = "unknown built-in precedence group '" + $5->text + "'";
+                const std::string message = "unknown built-in precedence group '" + groupName + "'";
                 report_parse_error(@5, message.c_str());
                 YYERROR;
             }
@@ -406,7 +408,7 @@ type_identifier:
         {
             $$ = $1;
             $$->text += ".";
-            $$->text += $3->text;
+            $$->text += *$3;
         }
 ;
 
