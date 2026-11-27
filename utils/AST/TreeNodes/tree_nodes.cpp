@@ -263,90 +263,238 @@ ast::Expr* create_ternary_expr(
     return node;
 }
 
-//хуятина строит дерево из списка операндов (с корректными приоритетами)
-//correct_precedence у гришечки переставлял узлы готового дерева, и делал это не совсем правильно
-ast::Expr* fold_expression_sequence(
-    ast::Context& context,
-    ast::Expr* expression,
-    const ast::Expr*& conflictingOperator,
-    std::string& errorMessage
-) {
-    if (expression->kind != ast::ExprKind::Sequence) {
-        return expression;
-    }
-
-    using operators::Precedence;
+namespace
+{
+    using Precedence = operators::Precedence;
 
     struct PendingOperator {
         ast::Expr* node;
         Precedence precedence;
     };
 
-    std::vector<PendingOperator> pendingOperators;
-    std::vector<ast::Expr*> operands{expression->children.front()};
-
-    const auto reduce = [&] {
-        ast::Expr* op = pendingOperators.back().node;
-        pendingOperators.pop_back();
-
-        ast::Expr* right = operands.back();
-        operands.pop_back();
-        ast::Expr* left = operands.back();
-
-        if (op->kind == ast::ExprKind::Ternary) {
-            operands.back() = create_ternary_expr(context, left, &op->text, op->children.front(), right);
-        } else {
-            operands.back() = create_infix_expr(context, left, &op->text, right);
-        }
+    enum class FoldAction {
+        Reduce,
+        Defer,
+        Error
     };
 
-    for (std::size_t i = 1; i < expression->children.size(); i += 2) {
-        ast::Expr* op = expression->children[i];
-        const auto declaration = context.infixOperatorDeclarations.find(op->text);
-        const auto precedence = declaration != context.infixOperatorDeclarations.end()
-            ? declaration->second
-            : operators::infixPrecedence(op->text);
+    struct FoldDecision {
+        FoldAction action;
+        std::string errorMessage;
+    };
 
-        while (!pendingOperators.empty()) {
-            const auto& pending = pendingOperators.back();
-            const auto previous = pending.precedence;
+    // ищем приоритет
+    Precedence resolve_infix_precedence(
+        const ast::Context& context,
+        const ast::Expr* operatorNode
+    ) {
+        const auto declaration = context.infixOperatorDeclarations.find(operatorNode->text);
 
-            // у настоящего приведения справа тип, уже разобранный грамматикой
-            if (operands.back()->kind != ast::ExprKind::TypeName) {
-                // у дефолта нет порядка относительно групп выше тернарки
-                if ((previous == Precedence::Default && precedence > Precedence::Default) ||
-                    (precedence == Precedence::Default && previous > Precedence::Default)) {
-                    conflictingOperator = op;
-                    errorMessage = "operators '" + pending.node->text + "' and '" + op->text +
-                        "' are in unrelated precedence groups; add parentheses";
-                    return nullptr;
-                }
-                if (previous < precedence) {
-                    break;
-                }
-                if (previous == precedence) {
-                    const auto associativity = operators::associativity(precedence);
-                    if (associativity == operators::Associativity::Right) {
-                        break;
-                    }
-                    if (associativity == operators::Associativity::None) {
-                        conflictingOperator = op;
-                        errorMessage = "operator '" + op->text +
-                            "' cannot be chained at this precedence without parentheses";
-                        return nullptr;
-                    }
-                }
-            }
-
-            reduce();
+        if (declaration != context.infixOperatorDeclarations.end()) {
+            return declaration->second;
         }
 
-        pendingOperators.push_back({op, precedence});
+        return operators::infixPrecedence(operatorNode->text);
+    }
+
+    // действие с оператором на вершине стека, когда встречается новый оператор
+    FoldDecision evaluate_operator_precedence(
+        const PendingOperator& pendingOperator,
+        const ast::Expr* currentOperator,
+        Precedence currentPrecedence,
+        const ast::Expr* rightOperand
+    ) {
+        const Precedence previousPrecedence = pendingOperator.precedence;
+
+        // после оператора приведения типов справа находится сам тип
+        if (rightOperand && rightOperand->kind == ast::ExprKind::TypeName) {
+            return {FoldAction::Reduce, {}};
+        }
+
+        // у дефолта нет порядка относительно групп выше тернарки
+        if ((previousPrecedence == Precedence::Default &&
+             currentPrecedence > Precedence::Default) ||
+            (currentPrecedence == Precedence::Default &&
+             previousPrecedence > Precedence::Default)) {
+            return {
+                FoldAction::Error,
+                "operators '" + pendingOperator.node->text +
+                "' and '" + currentOperator->text +
+                "' are in unrelated precedence groups; add parentheses"
+            };
+        }
+
+        if (previousPrecedence < currentPrecedence) {
+            return {FoldAction::Defer, {}};
+        }
+
+        if (previousPrecedence > currentPrecedence) {
+            return {FoldAction::Reduce, {}};
+        }
+
+        switch (operators::associativity(currentPrecedence)) {
+            case operators::Associativity::Left:
+                return {FoldAction::Reduce, {}};
+
+            case operators::Associativity::Right:
+                return {FoldAction::Defer, {}};
+
+            case operators::Associativity::None:
+                return {
+                    FoldAction::Error,
+                    "operator '" + currentOperator->text +
+                    "' cannot be chained at this precedence without parentheses"
+                };
+        }
+
+        return {
+            FoldAction::Error,
+            "internal error: unexpected operator associativity"
+        };
+    }
+
+    // создание узла для одного оператора
+    ast::Expr* build_operator_expr(
+        ast::Context& context,
+        const ast::Expr* operatorNode,
+        ast::Expr* left,
+        ast::Expr* right
+    ) {
+        if (operatorNode->kind == ast::ExprKind::Ternary) {
+            return create_ternary_expr(
+                context,
+                left,
+                &operatorNode->text,
+                operatorNode->children.front(),
+                right
+            );
+        }
+
+        return create_infix_expr(
+            context,
+            left,
+            &operatorNode->text,
+            right
+        );
+    }
+
+    // сворачиваем один оператор и два соседних операнда
+    bool reduce_top_operator(
+        ast::Context& context,
+        std::vector<ast::Expr*>& operands,
+        std::vector<PendingOperator>& pendingOperators,
+        std::string& errorMessage
+    ) {
+        if (pendingOperators.empty() || operands.size() < 2) {
+            errorMessage = "invalid state while folding expression";
+            return false;
+        }
+
+        const ast::Expr* operatorNode = pendingOperators.back().node;
+        ast::Expr* left = operands[operands.size() - 2];
+        ast::Expr* right = operands.back();
+        ast::Expr* expression = build_operator_expr(context, operatorNode, left, right);
+
+        if (!expression) {
+            errorMessage = "failed to create expression node";
+            return false;
+        }
+
+        pendingOperators.pop_back();
+        operands.pop_back();
+        operands.back() = expression;
+
+        return true;
+    }
+
+    // свернуть операторы
+    bool reduce_remaining_operators(
+        ast::Context& context,
+        std::vector<ast::Expr*>& operands,
+        std::vector<PendingOperator>& pendingOperators,
+        std::string& errorMessage
+    ) {
+        while (!pendingOperators.empty()) {
+            if (!reduce_top_operator(context, operands, pendingOperators, errorMessage)) {
+                return false;
+            }
+        }
+
+        if (operands.size() != 1) {
+            errorMessage = "invalid final expression structure";
+            return false;
+        }
+
+        return true;
+    }
+}
+
+ast::Expr* fold_expression_sequence(
+    ast::Context& context,
+    ast::Expr* expression,
+    const ast::Expr*& conflictingOperator,
+    std::string& errorMessage
+) {
+    conflictingOperator = nullptr;
+    errorMessage.clear();
+
+    if (!expression || expression->kind != ast::ExprKind::Sequence) {
+        return expression;
+    }
+
+
+    std::vector<PendingOperator> pendingOperators;
+    std::vector<ast::Expr*> operands;
+
+    pendingOperators.reserve(expression->children.size() / 2);
+    operands.reserve(expression->children.size() / 2 + 1);
+    operands.push_back(expression->children.front());
+
+    // рассматриваем по парам оператор, операнд
+    for (std::size_t i = 1; i < expression->children.size(); i += 2) {
+        ast::Expr* currentOperator = expression->children[i];
+        const Precedence currentPrecedence = resolve_infix_precedence(
+            context,
+            currentOperator
+        );
+
+        while (!pendingOperators.empty()) {
+            const FoldDecision decision = evaluate_operator_precedence(
+                pendingOperators.back(),
+                currentOperator,
+                currentPrecedence,
+                operands.back()
+            );
+
+            if (decision.action == FoldAction::Defer) {
+                break;
+            }
+
+            if (decision.action == FoldAction::Error) {
+                conflictingOperator = currentOperator;
+                errorMessage = decision.errorMessage;
+                return nullptr;
+            }
+
+            if (!reduce_top_operator(
+                    context,
+                    operands,
+                    pendingOperators,
+                    errorMessage)) {
+                return nullptr;
+            }
+        }
+
+        pendingOperators.push_back({currentOperator, currentPrecedence});
         operands.push_back(expression->children[i + 1]);
     }
 
-    while (!pendingOperators.empty()) {
-        reduce();
+    if (!reduce_remaining_operators(
+            context,
+            operands,
+            pendingOperators,
+            errorMessage)) {
+        return nullptr;
     }
 
     return operands.back();

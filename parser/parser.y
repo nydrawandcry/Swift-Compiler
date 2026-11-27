@@ -708,7 +708,11 @@ bool fold_pending_expressions()
         ast::Expr* folded = fold_expression_sequence(expressionAST, sequence, conflictingOperator, message);
 
         if (!folded) {
-            report_parse_error(conflictingOperator->location, message.c_str());
+            const SourceLocation location = conflictingOperator
+                ? conflictingOperator->location
+                : sequence->location;
+
+            report_parse_error(location, message.c_str());
             return false;
         }
 
