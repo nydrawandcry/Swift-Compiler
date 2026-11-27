@@ -102,6 +102,8 @@ std::string removeMultilineIndentation(const std::string& text, const std::strin
 void beginString(int hashCount, bool isMultiline);
 // вернуть сохраненные данные после завершения строки
 void endString();
+//завершить строку (выйти из состояния, передать парсеру токен)
+int finishString(int token, const std::string& text);
 // очистить данные при завершении/прерывании сканирования
 void clearStringContexts();
 // определить форму оператора и вернуть токен парсеру
@@ -531,11 +533,8 @@ Character {
 }
 
 <MULTILINE_STRING>^[ \t]*\"\"\" {
-        // отступ перед закрытием строки """
     std::string indentation(yytext, yyleng - 3);
-    printMultilineString("MULTILINE_STRING", indentation);
-    endString();
-    yy_pop_state();
+    return finishMultilineString(MULTILINE_STRING_LITERAL, indentation);
 }
 
 <MULTILINE_STRING>\"\"\" {
@@ -612,9 +611,7 @@ Character {
 
     if (hashCount == rawDelimiterLength) {
         std::string indentation(yytext, yyleng - 3 - rawDelimiterLength);
-        printMultilineString("RAW_MULTILINE_STRING", indentation);
-        endString();
-        yy_pop_state();
+        return finishMultilineString(RAW_MULTILINE_STRING_LITERAL, indentation);
     }
     else if (hashCount < rawDelimiterLength) {
         checkMultilineContentStart();
@@ -812,11 +809,7 @@ Character {
 <STRING>[^\\\"\n]+  { buffer.append(yytext); }
 
 <STRING>\" {
-    if (!stringInvalid) {
-        printf("STRING: %s\n", buffer.get().c_str());
-    }
-    endString();
-    yy_pop_state();
+    return finishString(STRING_LITERAL, buffer.get());
 }
 
     /* перевод строки - строка не закрыта */
@@ -936,14 +929,7 @@ Character {
     int hashCount = countHashes(yytext, yyleng, 1);
 
     if (hashCount == rawDelimiterLength) {
-
-        if (!stringInvalid) {
-            printf("RAW_STRING: %s\n", buffer.get().c_str());
-        }
-
-        endString();
-
-        yy_pop_state();
+        return finishString(RAW_STRING_LITERAL, buffer.get());
     }
     else if (hashCount < rawDelimiterLength) {
         buffer.append(yytext);
@@ -1443,6 +1429,21 @@ void endString()
     // ошибка внешней строки сохраняется.
     // ошибка вложенной строки также делает внешнюю ошибочной.
     stringInvalid = saved.stringInvalid || finishedStringInvalid;
+}
+
+int finishString(int token, const std::string& text)
+{
+    if (stringInvalid) {
+        token = LEX_ERROR;
+    } else {
+        yylval.text = makeValue(text);
+    }
+
+    yylloc.first_line = stringStart.first_line;
+    yylloc.first_column = stringStart.first_column;
+    endString();
+    yy_pop_state();
+    return token;
 }
 
 void clearStringContexts()
