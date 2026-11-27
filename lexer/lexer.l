@@ -26,12 +26,15 @@ bool stringInvalid = false;
 int rawDelimiterLength = 0;
 // находимся ли мы в первой строке после """
 bool multilineFirstLine = false;
+
+SourceLocation stringStart{};
 // структура данных для хранения информации о предыдущих строках (для вложенности)
 struct StringContext {
     Buffer buffer;
     bool stringInvalid;
     int rawDelimiterLength;
     bool multilineFirstLine;
+    SourceLocation start;
 };
 enum class OperatorType {
     INFIX,
@@ -95,7 +98,7 @@ void appendMultilineNewline();
 // добавление текста
 void appendMultilineText(const char* text);
 // вывод текста
-void printMultilineString(const char* tokenType, const std::string& indentation);
+int finishMultilineString(int token, const std::string& indentation);
 // удаление отступов из строк текста
 std::string removeMultilineIndentation(const std::string& text, const std::string& indentation, bool& indentationIsValid);
 // сохранить данные предыдущей строки и подготовить переменные к новой строке
@@ -428,14 +431,14 @@ Character {
             /* FLOAT ERRORS */
 
 {DECIMAL_DIGITS}\.{DECIMAL_DIGITS}[eE][+-]? {
-    fprintf(stderr,
+    lexerError(
         "Lexer error at line %d: incomplete decimal exponent '%s'\n",
         yylineno,
         yytext);
 }
 
 {DECIMAL_DIGITS}[eE][+-]? {
-    fprintf(stderr,
+    lexerError(
         "Lexer error at line %d: incomplete decimal exponent '%s'\n",
         yylineno,
         yytext);
@@ -443,7 +446,7 @@ Character {
 
 
 0x{HEX_DIGITS}(\.{HEX_DIGITS})?[pP][+-]? {
-    fprintf(stderr,
+    lexerError(
         "Lexer error at line %d: incomplete hexadecimal exponent '%s'\n",
         yylineno,
         yytext);
@@ -470,21 +473,21 @@ Character {
             /* UPPERCASE PREFIX ERRORS */
 
 0B[0-9A-Za-z_]* {
-    fprintf(stderr,
-        "Lexer error at line %d: invalid binary prefix in '%s'; use '0b'\n",
+    lexerError(
+        "Lexer error at line %d: invalid binary literal '%s'\n",
         yylineno,
         yytext);
 }
 
 0O[0-9A-Za-z_]* {
-    fprintf(stderr,
+    lexerError(
         "Lexer error at line %d: invalid octal prefix in '%s'; use '0o'\n",
         yylineno,
         yytext);
 }
 
 0X[0-9A-Za-z_]* {
-    fprintf(stderr,
+    lexerError(
         "Lexer error at line %d: invalid hexadecimal prefix in '%s'; use '0x'\n",
         yylineno,
         yytext);
@@ -492,8 +495,8 @@ Character {
 
              /* INVALID BASED INTEGERS */
 
-0b[0-9A-Za-z_]* { /* todo спросить, корректные ли проверки на ошибки и в правильном ли месте */
-    fprintf(stderr,
+0b[0-9A-Za-z_]* {
+    lexerError(
         "Lexer error at line %d: invalid binary literal '%s'\n",
          yylineno,
          yytext
@@ -501,14 +504,14 @@ Character {
 }
 
 0o[0-9A-Za-z_]* {
-    fprintf(stderr,
+    lexerError(
         "Lexer error at line %d: invalid octal literal '%s'\n",
         yylineno,
         yytext);
 }
 
 0x[0-9A-Za-z_]* {
-    fprintf(stderr,
+    lexerError(
         "Lexer error at line %d: invalid hexadecimal literal '%s'\n",
         yylineno,
         yytext);
@@ -517,7 +520,7 @@ Character {
             /* NUMBER FOLLOWED BY IDENTIFIER */
 
 {DECIMAL_DIGITS}[A-Za-z_][A-Za-z_0-9]* {
-    fprintf(stderr,
+    lexerError(
         "Lexer error at line %d: invalid decimal literal '%s'\n",
         yylineno,
         yytext);
@@ -539,7 +542,7 @@ Character {
 
 <MULTILINE_STRING>\"\"\" {
     checkMultilineContentStart();
-    fprintf(stderr,
+    lexerError(
         "Lexer error at line %d: closing multiline string delimiter must begin on a new line\n",
         yylineno);
     stringInvalid = true;
@@ -574,7 +577,7 @@ Character {
 
 <MULTILINE_STRING>\\. {
     checkMultilineContentStart();
-    fprintf(stderr,
+    lexerError(
         "Lexer error at line %d: invalid escape sequence '%s'\n",
         yylineno,
         yytext);
@@ -592,7 +595,7 @@ Character {
 }
 
 <MULTILINE_STRING><<EOF>> {
-    fprintf(stderr,
+    lexerError(
         "Lexer error at line %d: unterminated multiline string literal\n",
         buffer.getStartLine());
     clearStringContexts();
@@ -619,7 +622,7 @@ Character {
     }
     else {
         checkMultilineContentStart();
-        fprintf(stderr,
+        lexerError(
             "Lexer error at line %d: too many '#' characters in closing delimiter\n",
             yylineno);
         stringInvalid = true;
@@ -632,7 +635,7 @@ Character {
 
     checkMultilineContentStart();
     if (hashCount == rawDelimiterLength) {
-        fprintf(stderr,
+        lexerError(
             "Lexer error at line %d: closing multiline string delimiter must begin on a new line\n",
             yylineno);
         stringInvalid = true;
@@ -648,7 +651,7 @@ Character {
     if (hashCount == rawDelimiterLength) {
     }
     else if (hashCount > rawDelimiterLength) {
-        fprintf(stderr,
+        lexerError(
             "Lexer error at line %d: invalid raw string escape sequence '%s'\n",
             yylineno,
             yytext);
@@ -667,7 +670,7 @@ Character {
         buffer.append(yytext);
     }
     else if (hashCount > rawDelimiterLength) {
-        fprintf(stderr,
+        lexerError(
             "Lexer error at line %d: invalid raw string interpolation escape '%s'\n",
             yylineno,
             yytext);
@@ -699,7 +702,7 @@ Character {
 
     checkMultilineContentStart();
     if (hashCount >= rawDelimiterLength) {
-        fprintf(stderr,
+        lexerError(
             "Lexer error at line %d: invalid raw string escape sequence '%s'\n",
             yylineno,
             yytext);
@@ -720,7 +723,7 @@ Character {
 }
 
 <RAW_MULTILINE_STRING><<EOF>> {
-    fprintf(stderr,
+    lexerError(
         "Lexer error at line %d: unterminated raw multiline string literal\n",
         buffer.getStartLine());
     clearStringContexts();
@@ -779,7 +782,7 @@ Character {
 }
 
 <INTERPOLATION>\r\n|\r|\n {
-    fprintf(stderr,
+    lexerError(
         "Lexer error at line %d: newline is not allowed in string interpolation\n",
         yylineno);
 
@@ -788,7 +791,7 @@ Character {
 }
 
 <INTERPOLATION><<EOF>> {
-    fprintf(stderr,
+    lexerError(
         "Lexer error at line %d: unterminated string interpolation\n",
         yylineno);
 
@@ -798,7 +801,7 @@ Character {
 
     /* ошибочная escape */
 <STRING>\\. {
-    fprintf(stderr,
+    lexerError(
         "Lexer error at line %d: invalid escape sequence '%s'\n",
         yylineno,
         yytext);
@@ -814,7 +817,7 @@ Character {
 
     /* перевод строки - строка не закрыта */
 <STRING>\n {
-    fprintf(stderr,
+    lexerError(
             "Lexer error at line %d: unterminated string literal\n",
             buffer.getStartLine());
 
@@ -824,7 +827,7 @@ Character {
 }
     /* конец файла внутри строки */
 <STRING><<EOF>> {
-    fprintf(stderr,
+    lexerError(
             "Lexer error at line %d: unterminated string literal\n",
             buffer.getStartLine());
 
@@ -854,7 +857,7 @@ Character {
         buffer.append(yytext);
     }
     else if (hashCount > rawDelimiterLength) {
-        fprintf(stderr,
+        lexerError(
             "Lexer error at line %d: invalid raw string interpolation escape '%s'\n",
             yylineno,
             yytext);
@@ -908,7 +911,7 @@ Character {
     int hashCount = countHashes(yytext, yyleng, 1);
 
     if (hashCount >= rawDelimiterLength) {
-        fprintf(stderr,
+        lexerError(
             "Lexer error at line %d: invalid raw string escape sequence '%s'\n",
             yylineno,
             yytext);
@@ -935,7 +938,7 @@ Character {
         buffer.append(yytext);
     }
     else {
-        fprintf(stderr,
+        lexerError(
             "Lexer error at line %d: too many '#' characters in closing delimiter\n",
             yylineno);
 
@@ -956,7 +959,7 @@ Character {
 }
 
 <RAW_STRING><<EOF>> {
-    fprintf(stderr,
+    lexerError(
             "Lexer error at line %d: unterminated raw string literal\n",
             buffer.getStartLine());
 
@@ -992,18 +995,20 @@ Character {
     /* игнорирование символов в комментарии */
 }
 <COMMENT><<EOF>> {
-    fprintf(stderr,
+    lexerError(
         "Lexer error at line %d: unfinished multiline comment\n",
         yylineno
     );
-    BEGIN(INITIAL);
+    commentDepth = 0;
+    yy_pop_state();
+    return 0;
 }
 
     /* последовательность которая могла бы считаться оператором,
     но является зарезервированной под конец комментария. выдаем ошибку */
 "*/"{OPERATOR}? {
     KEEP_MATCHED(2);
-    fprintf(stderr,
+    lexerError(
         "Lexer error at line %d: unexpected end of block comment\n",
         yylineno
     );
@@ -1046,7 +1051,7 @@ Character {
     /* ошибка на `. `
        ` .` - разрешено */
 "."[ \t\r\n] {
-    fprintf(stderr,
+    lexerError(
         "Lexer error at line %d: extraneous whitespace after '.' is not permitted\n",
         yylineno
     );
@@ -1146,7 +1151,7 @@ Character {
     /* ERRORS */
 
 . {
-    fprintf(stderr,
+    lexerError(
         "Lexer error at line %d: unexpected symbol '%s'\n",
         yylineno,
         yytext);
@@ -1286,7 +1291,7 @@ void appendRawStringEscape(const char* replacement)
         buffer.append(yytext);
     }
     else if (hashCount > rawDelimiterLength) {
-        fprintf(stderr,
+        lexerError(
             "Lexer error at line %d: invalid raw string escape sequence '%s'\n",
             yylineno,
             yytext);
@@ -1301,7 +1306,7 @@ void appendRawStringEscape(const char* replacement)
 void checkMultilineContentStart()
 {
     if (multilineFirstLine) {
-        fprintf(stderr,
+        lexerError(
             "Lexer error at line %d: multiline string literal content must begin on a new line\n",
             buffer.getStartLine());
         stringInvalid = true;
@@ -1338,23 +1343,19 @@ void appendMultilineText(const char* text)
     buffer.append(normalized);
 }
 
-void printMultilineString(const char* tokenType, const std::string& indentation)
+int finishMultilineString(int token, const std::string& indentation)
 {
     bool indentationIsValid = true;
-    std::string text = removeMultilineIndentation(buffer.get(), indentation, indentationIsValid);
+    const std::string text = removeMultilineIndentation(buffer.get(), indentation, indentationIsValid);
         // проверка на валидное количество отступов
     if (!indentationIsValid) {
-        fprintf(stderr,
+        lexerError(
             "Lexer error at line %d: multiline string indentation does not match closing delimiter\n",
             buffer.getStartLine());
         stringInvalid = true;
     }
 
-    if (!stringInvalid) {
-        printf("%s: %s\n", tokenType, text.c_str());
-    }
-
-    buffer.reset(yylineno);
+    return finishString(token, text);
 }
 
 std::string removeMultilineIndentation(const std::string& text, const std::string& indentation, bool& indentationIsValid)
@@ -1405,7 +1406,8 @@ void beginString(int hashCount, bool isMultiline)
         buffer,
         stringInvalid,
         rawDelimiterLength,
-        multilineFirstLine
+        multilineFirstLine,
+        stringStart
     });
 
     // Теперь подготавливаем данные новой строки.
@@ -1413,6 +1415,7 @@ void beginString(int hashCount, bool isMultiline)
     stringInvalid = false;
     rawDelimiterLength = hashCount;
     multilineFirstLine = isMultiline;
+    stringStart = currentMatch;
 }
 
 void endString()
@@ -1425,6 +1428,7 @@ void endString()
     buffer = saved.buffer;
     rawDelimiterLength = saved.rawDelimiterLength;
     multilineFirstLine = saved.multilineFirstLine;
+    stringStart = saved.start;
 
     // ошибка внешней строки сохраняется.
     // ошибка вложенной строки также делает внешнюю ошибочной.
